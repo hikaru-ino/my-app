@@ -22,8 +22,9 @@ app.get("/", async (req, res) => {
 
 app.post("/users", async (req, res) => {
   const name = req.body.name;
+  const age = req.body.age ? Number(req.body.age) : null; // 数字に変換するのじゃ
   if (name) {
-    await prisma.user.create({ data: { name } });
+    await prisma.user.create({ data: { name, age } });
   }
   res.redirect("/");
 });
