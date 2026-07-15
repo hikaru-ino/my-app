@@ -4,7 +4,10 @@ import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "./generated/prisma/client";
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter, log: ["query"] });
 
@@ -27,6 +30,22 @@ app.post("/users", async (req, res) => {
     await prisma.user.create({ data: { name, age } });
   }
   res.redirect("/");
+});
+
+app.get("/books", async (req, res) => {
+  const books = await prisma.book.findMany();
+  res.render("books", { books });
+});
+
+app.post("/books", async (req, res) => {
+  const title = req.body.title;
+  const author = req.body.author;
+  const price = req.body.price ? Number(req.body.price) : null;
+  const course = req.body.course || null;
+  if (title && author && price !== null) {
+    await prisma.book.create({ data: { title, author, price, course } });
+  }
+  res.redirect("/books");
 });
 
 app.listen(PORT, () => {
