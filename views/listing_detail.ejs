@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title><%= listing.book.title %></title>
+</head>
+<body>
+ <%- include('partials/nav') %>
+
+ <h1><%= listing.book.title %></h1>
+ <p>著者: <%= listing.book.author %></p>
+ <% if (listing.book.publisher) { %><p>出版社: <%= listing.book.publisher %></p><% } %>
+ <% if (listing.book.edition) { %><p>版: <%= listing.book.edition %></p><% } %>
+ <% if (listing.book.isbn) { %><p>ISBN: <%= listing.book.isbn %></p><% } %>
+
+ <p>状態: <%= listing.condition %></p>
+ <p>ステータス: <%= listing.status %></p>
+
+ <% if (listing.listingType === 'FIXED') { %>
+   <p>価格: <%= listing.price %>円</p>
+ <% } else { %>
+   <p>現在価格: <%= listing.currentPrice %>円(開始価格 <%= listing.startingPrice %>円)</p>
+   <p>終了日時: <%= listing.auctionEndAt.toLocaleString('ja-JP') %></p>
+ <% } %>
+
+ <% if (listing.description) { %>
+   <p><%= listing.description %></p>
+ <% } %>
+
+ <p>出品者: <%= listing.seller.name %></p>
+
+ <p><a href="/listings">出品一覧に戻る</a></p>
+
+</body>
+</html>

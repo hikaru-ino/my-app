@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>出品する</title>
+</head>
+<body>
+ <%- include('partials/nav') %>
+
+ <h1>出品する</h1>
+
+ <% if (error) { %>
+   <p style="color: red;"><%= error %></p>
+ <% } %>
+
+ <% if (books.length === 0) { %>
+   <p>出品できる教科書がまだありません。先に<a href="/books">教科書マスタ</a>から登録してください。</p>
+ <% } else { %>
+   <form action="/listings" method="post">
+    <label>教科書
+      <select name="bookId" required>
+        <option value="">選択してください</option>
+        <% books.forEach(book => { %>
+          <option value="<%= book.id %>"><%= book.title %> / <%= book.author %></option>
+        <% }) %>
+      </select>
+    </label>
+    <p>教科書がまだ登録されていない場合は<a href="/books">教科書マスタ</a>から先に登録してください。</p>
+
+    <label>販売形式
+      <select name="listingType" id="listingType" required>
+        <option value="FIXED">販売形式(固定価格)</option>
+        <option value="AUCTION">オークション形式</option>
+      </select>
+    </label>
+
+    <label>状態
+      <select name="condition" required>
+        <% conditions.forEach(c => { %>
+          <option value="<%= c %>"><%= c %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <div id="fixedFields">
+      <input type="number" name="price" placeholder="価格(円)">
+    </div>
+
+    <div id="auctionFields">
+      <input type="number" name="startingPrice" placeholder="開始価格(円)">
+      <input type="datetime-local" name="auctionEndAt">
+    </div>
+
+    <div>
+      <textarea name="description" placeholder="説明文(任意)"></textarea>
+    </div>
+
+    <button type="submit">出品する</button>
+   </form>
+
+   <script>
+    var typeSelect = document.getElementById('listingType');
+    var fixedFields = document.getElementById('fixedFields');
+    var auctionFields = document.getElementById('auctionFields');
+    function toggleFields() {
+      var isAuction = typeSelect.value === 'AUCTION';
+      fixedFields.style.display = isAuction ? 'none' : 'block';
+      auctionFields.style.display = isAuction ? 'block' : 'none';
+    }
+    typeSelect.addEventListener('change', toggleFields);
+    toggleFields();
+   </script>
+ <% } %>
+
+</body>
+</html>

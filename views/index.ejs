@@ -5,18 +5,15 @@
   <title>慶應Books</title>
 </head>
 <body>
+ <%- include('partials/nav') %>
+
  <h1>慶應Books</h1>
 
  <% if (currentUser) { %>
    <p><%= currentUser.name %>さん、ようこそ(<%= currentUser.email %>)</p>
-   <form action="/logout" method="post">
-     <button type="submit">ログアウト</button>
-   </form>
  <% } else { %>
-   <p><a href="/login">ログイン</a> / <a href="/signup">新規登録</a></p>
+   <p>慶應生同士で教科書を売買できるサービスです。</p>
  <% } %>
-
- <p><a href="/books">教科書一覧を見る</a></p>
 
 </body>
 </html>

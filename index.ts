@@ -6,7 +6,7 @@ import session from "express-session";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, Prisma } from "./generated/prisma/client";
-import { ALLOWED_EMAIL_DOMAINS, isAllowedEmail } from "./constants";
+import { ALLOWED_EMAIL_DOMAINS, isAllowedEmail, BOOK_CONDITIONS, isAllowedCondition } from "./constants";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -155,6 +155,101 @@ app.post("/books", requireLogin, async (req, res) => {
   }
 
   res.redirect("/books");
+});
+
+app.get("/listings", async (req, res) => {
+  const listings = await prisma.listing.findMany({
+    where: { status: "ACTIVE" },
+    orderBy: { createdAt: "desc" },
+    include: { book: true, seller: true },
+  });
+  res.render("listings", { listings });
+});
+
+app.get("/listings/new", requireLogin, async (req, res) => {
+  const books = await prisma.book.findMany();
+  res.render("listings_new", { books, conditions: BOOK_CONDITIONS, error: null });
+});
+
+app.post("/listings", requireLogin, async (req, res) => {
+  const renderError = async (error: string) => {
+    const books = await prisma.book.findMany();
+    return res.status(400).render("listings_new", { books, conditions: BOOK_CONDITIONS, error });
+  };
+
+  const bookId = req.body.bookId ? Number(req.body.bookId) : null;
+  const listingType = req.body.listingType;
+  const condition = req.body.condition;
+  const description = req.body.description || null;
+
+  if (!bookId) {
+    return renderError("教科書を選択してください");
+  }
+  const book = await prisma.book.findUnique({ where: { id: bookId } });
+  if (!book) {
+    return renderError("指定された教科書が見つかりません");
+  }
+
+  if (listingType !== "FIXED" && listingType !== "AUCTION") {
+    return renderError("販売形式を選択してください");
+  }
+
+  if (!condition || !isAllowedCondition(condition)) {
+    return renderError("状態を選択してください");
+  }
+
+  let price: number | null = null;
+  let startingPrice: number | null = null;
+  let currentPrice: number | null = null;
+  let auctionEndAt: Date | null = null;
+
+  if (listingType === "FIXED") {
+    const priceValue = req.body.price ? Number(req.body.price) : null;
+    if (!priceValue || priceValue <= 0) {
+      return renderError("価格を入力してください");
+    }
+    price = priceValue;
+  } else {
+    const startingPriceValue = req.body.startingPrice ? Number(req.body.startingPrice) : null;
+    const auctionEndAtValue = req.body.auctionEndAt ? new Date(req.body.auctionEndAt) : null;
+    if (!startingPriceValue || startingPriceValue <= 0) {
+      return renderError("開始価格を入力してください");
+    }
+    if (!auctionEndAtValue || Number.isNaN(auctionEndAtValue.getTime())) {
+      return renderError("終了日時を入力してください");
+    }
+    startingPrice = startingPriceValue;
+    currentPrice = startingPriceValue;
+    auctionEndAt = auctionEndAtValue;
+  }
+
+  const listing = await prisma.listing.create({
+    data: {
+      bookId,
+      sellerId: res.locals.currentUser.id,
+      listingType,
+      condition,
+      description,
+      price,
+      startingPrice,
+      currentPrice,
+      auctionEndAt,
+    },
+  });
+
+  res.redirect(`/listings/${listing.id}`);
+});
+
+app.get("/listings/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const listing = await prisma.listing.findUnique({
+    where: { id },
+    include: { book: true, seller: true },
+  });
+  if (!listing) {
+    return res.status(404).send("Not Found");
+  }
+  res.render("listing_detail", { listing });
 });
 
 app.listen(PORT, () => {

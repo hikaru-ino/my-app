@@ -1,0 +1,14 @@
+<nav>
+  <a href="/">トップ</a> |
+  <a href="/listings">出品一覧</a> |
+  <a href="/books">教科書マスタ</a> |
+  <% if (currentUser) { %>
+    <%= currentUser.name %>さん
+    <form action="/logout" method="post" style="display:inline">
+      <button type="submit">ログアウト</button>
+    </form>
+  <% } else { %>
+    <a href="/login">ログイン</a> / <a href="/signup">新規登録</a>
+  <% } %>
+</nav>
+<hr>

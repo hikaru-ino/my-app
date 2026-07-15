@@ -2,10 +2,13 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>教科書一覧</title>
+  <title>教科書マスタ</title>
 </head>
 <body>
- <h1>教科書一覧</h1>
+ <%- include('partials/nav') %>
+
+ <h1>教科書マスタ</h1>
+ <p>ここは教科書そのもの(タイトル・著者など)の情報を管理する一覧です。実際の売買は<a href="/listings">出品一覧</a>から行います。</p>
 
  <% if (error) { %>
    <p style="color: red;"><%= error %></p>

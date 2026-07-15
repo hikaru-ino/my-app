@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>出品一覧</title>
+</head>
+<body>
+ <%- include('partials/nav') %>
+
+ <h1>出品一覧</h1>
+
+ <% if (currentUser) { %>
+   <p><a href="/listings/new">出品する</a></p>
+ <% } else { %>
+   <p>出品するには<a href="/login">ログイン</a>してください。</p>
+ <% } %>
+
+ <ul>
+  <% listings.forEach(listing => { %>
+    <li>
+      <a href="/listings/<%= listing.id %>"><%= listing.book.title %></a>
+      / <%= listing.book.author %>
+      / <% if (listing.listingType === 'FIXED') { %>
+          <%= listing.price %>円
+        <% } else { %>
+          現在 <%= listing.currentPrice %>円(オークション)
+        <% } %>
+      / 状態: <%= listing.condition %>
+      / 出品者: <%= listing.seller.name %>
+    </li>
+  <% }) %>
+ </ul>
+
+ <p><a href="/books">教科書マスタを見る</a></p>
+
+</body>
+</html>
