@@ -6,23 +6,35 @@
 </head>
 <body>
  <h1>教科書一覧</h1>
+
+ <% if (error) { %>
+   <p style="color: red;"><%= error %></p>
+ <% } %>
+
  <ul>
   <% books.forEach(book => { %>
     <li>
-      <%= book.title %> / <%= book.author %> — <%= book.price %>円
-      <% if (book.course) { %>(<%= book.course %>)<% } %>
+      <%= book.title %> / <%= book.author %>
+      <% if (book.publisher) { %>(<%= book.publisher %>)<% } %>
+      <% if (book.edition) { %> <%= book.edition %><% } %>
+      <% if (book.isbn) { %> [ISBN: <%= book.isbn %>]<% } %>
     </li>
   <% }) %>
  </ul>
 
- <h2>出品する</h2>
- <form action="/books" method="post">
-  <input type="text" name="title" placeholder="タイトル" required>
-  <input type="text" name="author" placeholder="著者" required>
-  <input type="number" name="price" placeholder="価格" required>
-  <input type="text" name="course" placeholder="授業名(任意)">
-  <button type="submit">出品</button>
- </form>
+ <% if (currentUser) { %>
+   <h2>教科書を登録する</h2>
+   <form action="/books" method="post">
+    <input type="text" name="title" placeholder="タイトル" required>
+    <input type="text" name="author" placeholder="著者" required>
+    <input type="text" name="publisher" placeholder="出版社(任意)">
+    <input type="text" name="edition" placeholder="版(任意)">
+    <input type="text" name="isbn" placeholder="ISBN(任意)">
+    <button type="submit">登録</button>
+   </form>
+ <% } else { %>
+   <p>教科書を登録するには<a href="/login">ログイン</a>してください。</p>
+ <% } %>
 
 </body>
 </html>

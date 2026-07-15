@@ -5,7 +5,7 @@ import express from "express";
 import session from "express-session";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { PrismaClient } from "./generated/prisma/client";
+import { PrismaClient, Prisma } from "./generated/prisma/client";
 import { ALLOWED_EMAIL_DOMAINS, isAllowedEmail } from "./constants";
 
 const pool = new Pool({
@@ -45,6 +45,13 @@ app.use(async (req, res, next) => {
     : null;
   next();
 });
+
+function requireLogin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  if (!res.locals.currentUser) {
+    return res.redirect("/login");
+  }
+  next();
+}
 
 app.get("/", (req, res) => {
   res.render("index");
@@ -114,17 +121,39 @@ app.post("/logout", (req, res) => {
 
 app.get("/books", async (req, res) => {
   const books = await prisma.book.findMany();
-  res.render("books", { books });
+  res.render("books", { books, error: null });
 });
 
-app.post("/books", async (req, res) => {
+app.post("/books", requireLogin, async (req, res) => {
   const title = req.body.title;
   const author = req.body.author;
-  const price = req.body.price ? Number(req.body.price) : null;
-  const course = req.body.course || null;
-  if (title && author && price !== null) {
-    await prisma.book.create({ data: { title, author, price, course } });
+  const isbn = req.body.isbn ? req.body.isbn : null;
+  const publisher = req.body.publisher || null;
+  const edition = req.body.edition || null;
+
+  if (!title || !author) {
+    const books = await prisma.book.findMany();
+    return res.status(400).render("books", { books, error: "タイトルと著者は必須です" });
   }
+
+  if (isbn) {
+    const existing = await prisma.book.findUnique({ where: { isbn } });
+    if (existing) {
+      // 既に同じISBNの教科書が登録済み。重複作成せず既存レコードをそのまま使う
+      return res.redirect("/books");
+    }
+  }
+
+  try {
+    await prisma.book.create({ data: { title, author, isbn, publisher, edition } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      // 事前チェックとcreateの間で他リクエストが同じISBNを先に登録した場合の保険
+      return res.redirect("/books");
+    }
+    throw err;
+  }
+
   res.redirect("/books");
 });
 

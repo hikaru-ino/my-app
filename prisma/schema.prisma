@@ -23,9 +23,36 @@ model User {
 }
 
 model Book {
-  id     Int    @id @default(autoincrement())
-  title  String
-  author String
-  price  Int
-  course String?
+  id        Int      @id @default(autoincrement())
+  isbn      String?  @unique
+  title     String
+  author    String
+  publisher String?
+  edition   String?
+  createdAt DateTime @default(now())
+
+  courses CourseBook[]
+}
+
+model Course {
+  id        Int      @id @default(autoincrement())
+  name      String
+  code      String?
+  teacher   String?
+  year      Int?
+  term      String?
+  createdAt DateTime @default(now())
+
+  books CourseBook[]
+}
+
+model CourseBook {
+  id       Int @id @default(autoincrement())
+  bookId   Int
+  courseId Int
+
+  book   Book   @relation(fields: [bookId], references: [id])
+  course Course @relation(fields: [courseId], references: [id])
+
+  @@unique([bookId, courseId])
 }
