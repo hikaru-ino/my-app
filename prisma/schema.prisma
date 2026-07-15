@@ -13,9 +13,13 @@ datasource db {
 }
 
 model User {
-  id   Int    @id @default(autoincrement())
-  name String
-  age  Int?
+  id                Int      @id @default(autoincrement())
+  email             String   @unique
+  passwordHash      String
+  name              String
+  emailVerified     Boolean  @default(false)
+  verificationToken String?
+  createdAt         DateTime @default(now())
 }
 
 model Book {
