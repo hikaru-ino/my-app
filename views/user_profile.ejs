@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title><%= profileUser.name %>さんの評価</title>
+</head>
+<body>
+ <%- include('partials/nav') %>
+
+ <h1><%= profileUser.name %>さん</h1>
+
+ <% if (reviewCount === 0) { %>
+   <p>まだ評価がありません。</p>
+ <% } else { %>
+   <p>★<%= averageScore.toFixed(1) %>(<%= reviewCount %>件)</p>
+ <% } %>
+
+ <h2>受け取ったレビュー</h2>
+ <% if (reviews.length === 0) { %>
+   <p>まだレビューがありません。</p>
+ <% } else { %>
+   <ul>
+     <% reviews.forEach(review => { %>
+       <li>
+         ★<%= review.score %> <%= review.reviewer.name %>さん(<%= review.order.listing.book.title %>・<%= review.createdAt.toLocaleString('ja-JP') %>)
+         <% if (review.comment) { %><br><%= review.comment %><% } %>
+       </li>
+     <% }) %>
+   </ul>
+ <% } %>
+
+</body>
+</html>

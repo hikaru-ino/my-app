@@ -24,3 +24,10 @@ export const CAMPUSES = Object.keys(CAMPUS_LABELS);
 export function isAllowedCampus(campus: string): boolean {
   return campus in CAMPUS_LABELS;
 }
+
+export const REVIEW_SCORE_MIN = 1;
+export const REVIEW_SCORE_MAX = 5;
+
+export function isAllowedScore(score: number): boolean {
+  return Number.isInteger(score) && score >= REVIEW_SCORE_MIN && score <= REVIEW_SCORE_MAX;
+}

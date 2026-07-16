@@ -21,12 +21,14 @@ model User {
   verificationToken String?
   createdAt         DateTime @default(now())
 
-  listings      Listing[]      @relation("ListingSeller")
-  wonListings   Listing[]      @relation("ListingWinner")
-  bids          Bid[]
-  conversations Conversation[]
-  messages      Message[]
-  orders        Order[]
+  listings        Listing[]      @relation("ListingSeller")
+  wonListings     Listing[]      @relation("ListingWinner")
+  bids            Bid[]
+  conversations   Conversation[]
+  messages        Message[]
+  orders          Order[]
+  reviewsWritten  Review[]       @relation("ReviewsWritten")
+  reviewsReceived Review[]       @relation("ReviewsReceived")
 }
 
 model Book {
@@ -174,8 +176,26 @@ model Order {
 
   createdAt DateTime @default(now())
 
-  listing Listing @relation(fields: [listingId], references: [id])
-  buyer   User    @relation(fields: [buyerId], references: [id])
+  listing Listing  @relation(fields: [listingId], references: [id])
+  buyer   User     @relation(fields: [buyerId], references: [id])
+  reviews Review[]
 
   @@index([buyerId])
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  reviewerId Int
+  revieweeId Int
+  score      Int // 1-5。範囲チェックはアプリ層(constants.ts)で行う
+  comment    String?
+  createdAt  DateTime @default(now())
+
+  order    Order @relation(fields: [orderId], references: [id])
+  reviewer User  @relation("ReviewsWritten", fields: [reviewerId], references: [id])
+  reviewee User  @relation("ReviewsReceived", fields: [revieweeId], references: [id])
+
+  @@unique([orderId, reviewerId])
+  @@index([revieweeId])
 }

@@ -8,8 +8,11 @@
  <%- include('partials/nav') %>
 
  <h1><%= conversation.listing.book.title %>についての会話</h1>
+ <% const isBuyer = conversation.buyerId === currentUser.id; %>
+ <% const counterpartId = isBuyer ? conversation.listing.sellerId : conversation.buyerId; %>
+ <% const counterpart = isBuyer ? conversation.listing.seller.name : conversation.buyer.name; %>
  <p>
-   相手: <%= conversation.buyerId === currentUser.id ? conversation.listing.seller.name : conversation.buyer.name %>さん
+   相手: <a href="/users/<%= counterpartId %>"><%= counterpart %>さん</a>
    <br>
    <a href="/listings/<%= conversation.listing.id %>">出品詳細を見る</a>
  </p>

@@ -11,9 +11,10 @@
  <p><a href="/listings/<%= order.listing.id %>">出品詳細を見る</a></p>
 
  <% const isBuyer = currentUser.id === order.buyerId; %>
+ <% const counterpartId = isBuyer ? order.listing.sellerId : order.buyerId; %>
  <% const counterpart = isBuyer ? order.listing.seller.name : order.buyer.name; %>
 
- <p>相手: <%= counterpart %>さん</p>
+ <p>相手: <a href="/users/<%= counterpartId %>"><%= counterpart %>さん</a></p>
  <p>確定価格: <%= order.price %>円</p>
  <p>ステータス: <%= order.status %></p>
 
@@ -62,6 +63,37 @@
    <form action="/orders/<%= order.id %>/cancel" method="post" style="display:inline">
      <button type="submit">この取引を取消す</button>
    </form>
+ <% } %>
+
+ <% if (order.status === 'COMPLETED') { %>
+   <h2>レビュー</h2>
+   <% if (myReview) { %>
+     <p>
+       あなたの評価: ★<%= myReview.score %>
+       <% if (myReview.comment) { %><br><%= myReview.comment %><% } %>
+     </p>
+     <% if (counterpartReview) { %>
+       <p>
+         <%= counterpart %>さんからの評価: ★<%= counterpartReview.score %>
+         <% if (counterpartReview.comment) { %><br><%= counterpartReview.comment %><% } %>
+       </p>
+     <% } else { %>
+       <p>相手がレビューを投稿すると表示されます。</p>
+     <% } %>
+   <% } else { %>
+     <form action="/orders/<%= order.id %>/reviews" method="post">
+       <select name="score" required>
+         <option value="">評価を選択</option>
+         <option value="5">★5</option>
+         <option value="4">★4</option>
+         <option value="3">★3</option>
+         <option value="2">★2</option>
+         <option value="1">★1</option>
+       </select>
+       <textarea name="comment" placeholder="コメント(任意)"></textarea>
+       <button type="submit">レビューを投稿</button>
+     </form>
+   <% } %>
  <% } %>
 
  <p><a href="/orders">取引一覧に戻る</a></p>

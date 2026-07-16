@@ -17,10 +17,10 @@
        <li>
          <a href="/orders/<%= order.id %>">
            [<%= order.isSeller ? '出品者として' : '購入者として' %>]
-           <%= order.listing.book.title %> —
-           <%= order.isSeller ? order.buyer.name : order.listing.seller.name %>さん
+           <%= order.listing.book.title %>
            (<%= order.price %>円 / <%= order.status %>)
          </a>
+         — <a href="/users/<%= order.isSeller ? order.buyerId : order.listing.sellerId %>"><%= order.isSeller ? order.buyer.name : order.listing.seller.name %>さん</a>
          <% if (order.campus) { %>
            <br><%= campusLabels[order.campus] %><% if (order.meetupAt) { %> <%= order.meetupAt.toLocaleString('ja-JP') %><% } %>
          <% } %>

@@ -17,8 +17,9 @@
        <li>
          <a href="/conversations/<%= c.id %>">
            [<%= c.isSeller ? '出品者として' : '質問者として' %>]
-           <%= c.listing.book.title %> — <%= c.isSeller ? c.buyer.name : c.listing.seller.name %>さん
+           <%= c.listing.book.title %>
          </a>
+         — <a href="/users/<%= c.isSeller ? c.buyerId : c.listing.sellerId %>"><%= c.isSeller ? c.buyer.name : c.listing.seller.name %>さん</a>
          <br>
          <% if (c.messages[0]) { %>
            <%= c.messages[0].body.slice(0, 40) %>(<%= c.lastMessageAt.toLocaleString('ja-JP') %>)

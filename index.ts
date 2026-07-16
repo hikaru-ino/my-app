@@ -14,6 +14,7 @@ import {
   CAMPUSES,
   CAMPUS_LABELS,
   isAllowedCampus,
+  isAllowedScore,
 } from "./constants";
 
 const pool = new Pool({
@@ -632,6 +633,28 @@ async function loadOrderForUser(id: number, userId: number) {
   return isParticipant ? order : null;
 }
 
+// ブラインドレビュー: 自分がまだこのOrderにレビューを投稿していなければ、相手のレビューは見せない。
+async function renderOrderDetail(
+  res: express.Response,
+  order: NonNullable<Awaited<ReturnType<typeof loadOrderForUser>>>,
+  userId: number,
+  error: string | null,
+  status = 200
+) {
+  const reviews = await prisma.review.findMany({ where: { orderId: order.id } });
+  const myReview = reviews.find((r) => r.reviewerId === userId) ?? null;
+  const counterpartReview = myReview ? (reviews.find((r) => r.reviewerId !== userId) ?? null) : null;
+
+  res.status(status).render("order_detail", {
+    order,
+    error,
+    campuses: CAMPUSES,
+    campusLabels: CAMPUS_LABELS,
+    myReview,
+    counterpartReview,
+  });
+}
+
 app.get("/orders", requireLogin, async (req, res) => {
   const userId = res.locals.currentUser.id;
 
@@ -651,22 +674,23 @@ app.get("/orders", requireLogin, async (req, res) => {
 
 app.get("/orders/:id", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
-  const order = await loadOrderForUser(id, res.locals.currentUser.id);
+  const userId = res.locals.currentUser.id;
+  const order = await loadOrderForUser(id, userId);
   if (!order) {
     return res.status(404).send("Not Found");
   }
-  res.render("order_detail", { order, error: null, campuses: CAMPUSES, campusLabels: CAMPUS_LABELS });
+  await renderOrderDetail(res, order, userId, null);
 });
 
 app.post("/orders/:id/meetup", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
-  const order = await loadOrderForUser(id, res.locals.currentUser.id);
+  const userId = res.locals.currentUser.id;
+  const order = await loadOrderForUser(id, userId);
   if (!order) {
     return res.status(404).send("Not Found");
   }
 
-  const renderError = (error: string) =>
-    res.status(400).render("order_detail", { order, error, campuses: CAMPUSES, campusLabels: CAMPUS_LABELS });
+  const renderError = (error: string) => renderOrderDetail(res, order, userId, error, 400);
 
   if (order.status !== "PENDING") {
     return renderError("この取引は既に確定または取消されています");
@@ -699,9 +723,7 @@ app.post("/orders/:id/confirm", requireLogin, async (req, res) => {
     return res.status(404).send("Not Found");
   }
   if (order.status !== "PENDING") {
-    return res
-      .status(400)
-      .render("order_detail", { order, error: "この取引は既に確定または取消されています", campuses: CAMPUSES, campusLabels: CAMPUS_LABELS });
+    return renderOrderDetail(res, order, userId, "この取引は既に確定または取消されています", 400);
   }
 
   const isBuyer = order.buyerId === userId;
@@ -723,14 +745,13 @@ app.post("/orders/:id/confirm", requireLogin, async (req, res) => {
 
 app.post("/orders/:id/cancel", requireLogin, async (req, res) => {
   const id = Number(req.params.id);
-  const order = await loadOrderForUser(id, res.locals.currentUser.id);
+  const userId = res.locals.currentUser.id;
+  const order = await loadOrderForUser(id, userId);
   if (!order) {
     return res.status(404).send("Not Found");
   }
   if (order.status !== "PENDING") {
-    return res
-      .status(400)
-      .render("order_detail", { order, error: "この取引は既に確定または取消されています", campuses: CAMPUSES, campusLabels: CAMPUS_LABELS });
+    return renderOrderDetail(res, order, userId, "この取引は既に確定または取消されています", 400);
   }
 
   // 1 Listing : 生涯1 Order の制約と再利用は両立しないため、Listingは復帰させずCANCELLEDのまま終端する。
@@ -740,6 +761,72 @@ app.post("/orders/:id/cancel", requireLogin, async (req, res) => {
   });
 
   res.redirect(`/orders/${id}`);
+});
+
+app.post("/orders/:id/reviews", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const userId = res.locals.currentUser.id;
+  const order = await loadOrderForUser(id, userId);
+  if (!order) {
+    return res.status(404).send("Not Found");
+  }
+
+  const renderError = (error: string) => renderOrderDetail(res, order, userId, error, 400);
+
+  if (order.status !== "COMPLETED") {
+    return renderError("取引が完了してからレビューを投稿できます");
+  }
+
+  const score = req.body.score ? Number(req.body.score) : null;
+  const comment = req.body.comment || null;
+
+  if (!score || !isAllowedScore(score)) {
+    return renderError("評価は1〜5の範囲で選択してください");
+  }
+
+  const isBuyer = order.buyerId === userId;
+  const revieweeId = isBuyer ? order.listing.sellerId : order.buyerId;
+
+  try {
+    await prisma.review.create({
+      data: { orderId: id, reviewerId: userId, revieweeId, score, comment },
+    });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return renderError("既にこの取引のレビューを投稿しています");
+    }
+    throw err;
+  }
+
+  res.redirect(`/orders/${id}`);
+});
+
+app.get("/users/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  const profileUser = await prisma.user.findUnique({ where: { id } });
+  if (!profileUser) {
+    return res.status(404).send("Not Found");
+  }
+
+  const [reviews, aggregate] = await Promise.all([
+    prisma.review.findMany({
+      where: { revieweeId: id },
+      include: { reviewer: true, order: { include: { listing: { include: { book: true } } } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.review.aggregate({
+      where: { revieweeId: id },
+      _avg: { score: true },
+      _count: true,
+    }),
+  ]);
+
+  res.render("user_profile", {
+    profileUser,
+    reviews,
+    averageScore: aggregate._avg.score,
+    reviewCount: aggregate._count,
+  });
 });
 
 app.listen(PORT, () => {

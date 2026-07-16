@@ -37,7 +37,7 @@
    <p><%= listing.description %></p>
  <% } %>
 
- <p>出品者: <%= listing.seller.name %></p>
+ <p>出品者: <a href="/users/<%= listing.seller.id %>"><%= listing.seller.name %></a></p>
 
  <% if (currentUser && currentUser.id !== listing.sellerId) { %>
    <form action="/listings/<%= listing.id %>/conversations" method="post" style="display:inline">
