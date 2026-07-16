@@ -35,6 +35,14 @@
 
  <p>出品者: <%= listing.seller.name %></p>
 
+ <% if (currentUser && currentUser.id !== listing.sellerId) { %>
+   <form action="/listings/<%= listing.id %>/conversations" method="post" style="display:inline">
+     <button type="submit">出品者に質問する</button>
+   </form>
+ <% } else if (!currentUser) { %>
+   <p>出品者に質問するには<a href="/login">ログイン</a>してください。</p>
+ <% } %>
+
  <% if (listing.listingType === 'AUCTION') { %>
    <h2>入札履歴</h2>
    <% if (listing.bids.length === 0) { %>

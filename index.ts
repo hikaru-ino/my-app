@@ -463,6 +463,97 @@ app.post("/listings/:id/bids", requireLogin, async (req, res) => {
   res.redirect(`/listings/${id}`);
 });
 
+app.post("/listings/:id/conversations", requireLogin, async (req, res) => {
+  const listingId = Number(req.params.id);
+  const buyerId = res.locals.currentUser.id;
+
+  const listing = await prisma.listing.findUnique({ where: { id: listingId } });
+  if (!listing) {
+    return res.status(404).send("Not Found");
+  }
+  if (listing.sellerId === buyerId) {
+    return res.status(400).send("自分の出品には質問できません");
+  }
+
+  const conversation = await prisma.conversation.upsert({
+    where: { listingId_buyerId: { listingId, buyerId } },
+    update: {},
+    create: { listingId, buyerId },
+  });
+
+  res.redirect(`/conversations/${conversation.id}`);
+});
+
+// Conversationの当事者(買い手 or その出品の出品者)以外には存在自体を明かさないため、
+// 権限がない場合は403ではなくnullを返す(呼び出し側で404にする)。
+async function loadConversationForUser(id: number, userId: number) {
+  const conversation = await prisma.conversation.findUnique({
+    where: { id },
+    include: {
+      listing: { include: { book: true, seller: true } },
+      buyer: true,
+      messages: { include: { sender: true }, orderBy: { createdAt: "asc" } },
+    },
+  });
+  if (!conversation) {
+    return null;
+  }
+  const isParticipant = conversation.buyerId === userId || conversation.listing.sellerId === userId;
+  return isParticipant ? conversation : null;
+}
+
+app.get("/conversations", requireLogin, async (req, res) => {
+  const userId = res.locals.currentUser.id;
+
+  const conversations = await prisma.conversation.findMany({
+    where: { OR: [{ buyerId: userId }, { listing: { sellerId: userId } }] },
+    include: {
+      listing: { include: { book: true, seller: true } },
+      buyer: true,
+      messages: { orderBy: { createdAt: "desc" }, take: 1 },
+    },
+  });
+
+  const sorted = conversations
+    .map((c) => ({
+      ...c,
+      isSeller: c.listing.sellerId === userId,
+      lastMessageAt: c.messages[0]?.createdAt ?? c.createdAt,
+    }))
+    .sort((a, b) => b.lastMessageAt.getTime() - a.lastMessageAt.getTime());
+
+  res.render("conversations", { conversations: sorted });
+});
+
+app.get("/conversations/:id", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const conversation = await loadConversationForUser(id, res.locals.currentUser.id);
+  if (!conversation) {
+    return res.status(404).send("Not Found");
+  }
+  res.render("conversation_detail", { conversation, error: null });
+});
+
+app.post("/conversations/:id/messages", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const body = typeof req.body.body === "string" ? req.body.body.trim() : "";
+
+  const conversation = await loadConversationForUser(id, res.locals.currentUser.id);
+  if (!conversation) {
+    return res.status(404).send("Not Found");
+  }
+
+  if (!body) {
+    return res.status(400).render("conversation_detail", { conversation, error: "メッセージを入力してください" });
+  }
+
+  await prisma.message.create({
+    data: { conversationId: id, senderId: res.locals.currentUser.id, body },
+  });
+
+  res.redirect(`/conversations/${id}`);
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

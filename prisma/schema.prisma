@@ -21,9 +21,11 @@ model User {
   verificationToken String?
   createdAt         DateTime @default(now())
 
-  listings    Listing[] @relation("ListingSeller")
-  wonListings Listing[] @relation("ListingWinner")
-  bids        Bid[]
+  listings      Listing[]      @relation("ListingSeller")
+  wonListings   Listing[]      @relation("ListingWinner")
+  bids          Bid[]
+  conversations Conversation[]
+  messages      Message[]
 }
 
 model Book {
@@ -92,10 +94,11 @@ model Listing {
 
   createdAt DateTime @default(now())
 
-  book   Book  @relation(fields: [bookId], references: [id])
-  seller User  @relation("ListingSeller", fields: [sellerId], references: [id])
-  winner User? @relation("ListingWinner", fields: [winnerId], references: [id])
-  bids   Bid[]
+  book          Book           @relation(fields: [bookId], references: [id])
+  seller        User           @relation("ListingSeller", fields: [sellerId], references: [id])
+  winner        User?          @relation("ListingWinner", fields: [winnerId], references: [id])
+  bids          Bid[]
+  conversations Conversation[]
 
   @@index([status, createdAt(sort: Desc)])
   @@index([bookId])
@@ -110,4 +113,31 @@ model Bid {
 
   listing Listing @relation(fields: [listingId], references: [id])
   bidder  User    @relation(fields: [bidderId], references: [id])
+}
+
+model Conversation {
+  id        Int      @id @default(autoincrement())
+  listingId Int
+  buyerId   Int // 質問した側(出品者はlisting.sellerIdを参照)
+  createdAt DateTime @default(now())
+
+  listing  Listing   @relation(fields: [listingId], references: [id])
+  buyer    User      @relation(fields: [buyerId], references: [id])
+  messages Message[]
+
+  @@unique([listingId, buyerId])
+  @@index([buyerId])
+}
+
+model Message {
+  id             Int      @id @default(autoincrement())
+  conversationId Int
+  senderId       Int
+  body           String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@index([conversationId, createdAt])
 }

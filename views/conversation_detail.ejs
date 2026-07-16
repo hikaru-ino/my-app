@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title><%= conversation.listing.book.title %>についての会話</title>
+</head>
+<body>
+ <%- include('partials/nav') %>
+
+ <h1><%= conversation.listing.book.title %>についての会話</h1>
+ <p>
+   相手: <%= conversation.buyerId === currentUser.id ? conversation.listing.seller.name : conversation.buyer.name %>さん
+   <br>
+   <a href="/listings/<%= conversation.listing.id %>">出品詳細を見る</a>
+ </p>
+
+ <ul>
+   <% conversation.messages.forEach(m => { %>
+     <li>
+       <strong><%= m.sender.name %></strong>(<%= m.createdAt.toLocaleString('ja-JP') %>): <%= m.body %>
+     </li>
+   <% }) %>
+ </ul>
+
+ <% if (error) { %>
+   <p style="color:red"><%= error %></p>
+ <% } %>
+
+ <form action="/conversations/<%= conversation.id %>/messages" method="post">
+   <textarea name="body" required></textarea>
+   <button type="submit">送信</button>
+ </form>
+
+ <p><a href="/conversations">会話一覧に戻る</a></p>
+
+</body>
+</html>
