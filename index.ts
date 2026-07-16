@@ -15,6 +15,10 @@ import {
   CAMPUS_LABELS,
   isAllowedCampus,
   isAllowedScore,
+  LISTING_STATUS_LABELS,
+  LISTING_STATUS_BADGE_CLASSES,
+  ORDER_STATUS_LABELS,
+  ORDER_STATUS_BADGE_CLASSES,
 } from "./constants";
 
 const pool = new Pool({
@@ -29,6 +33,7 @@ const PORT = process.env.PORT || 8888;
 
 app.set("view engine", "ejs");
 app.set("views", "./views");
+app.use(express.static("public"));
 app.use(express.urlencoded({ extended: true }));
 
 app.set("trust proxy", 1); // RenderのHTTPSリバースプロキシ越しでsecure cookieを送るために必要
@@ -48,10 +53,17 @@ app.use(
   })
 );
 
+// ステータスの表示ラベル/バッジクラスは全ページで使う可能性があるため、
+// render呼び出しごとに渡し忘れるリスクを避けてres.localsでグローバルに公開する。
 app.use(async (req, res, next) => {
   res.locals.currentUser = req.session.userId
     ? await prisma.user.findUnique({ where: { id: req.session.userId } })
     : null;
+  res.locals.listingStatusLabels = LISTING_STATUS_LABELS;
+  res.locals.listingStatusBadgeClasses = LISTING_STATUS_BADGE_CLASSES;
+  res.locals.orderStatusLabels = ORDER_STATUS_LABELS;
+  res.locals.orderStatusBadgeClasses = ORDER_STATUS_BADGE_CLASSES;
+  res.locals.campusLabels = CAMPUS_LABELS;
   next();
 });
 
@@ -649,7 +661,6 @@ async function renderOrderDetail(
     order,
     error,
     campuses: CAMPUSES,
-    campusLabels: CAMPUS_LABELS,
     myReview,
     counterpartReview,
   });
@@ -669,7 +680,7 @@ app.get("/orders", requireLogin, async (req, res) => {
 
   const withRole = orders.map((order) => ({ ...order, isSeller: order.listing.sellerId === userId }));
 
-  res.render("orders", { orders: withRole, campusLabels: CAMPUS_LABELS });
+  res.render("orders", { orders: withRole });
 });
 
 app.get("/orders/:id", requireLogin, async (req, res) => {

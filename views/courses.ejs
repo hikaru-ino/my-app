@@ -1,42 +1,53 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>授業一覧</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: '授業一覧' }) %>
 
  <h1>授業一覧</h1>
 
  <% if (error) { %>
-   <p style="color: red;"><%= error %></p>
+   <div class="alert-error"><%= error %></div>
  <% } %>
 
- <ul>
-  <% courses.forEach(course => { %>
-    <li>
-      <%= course.name %>
-      <% if (course.code) { %>[<%= course.code %>]<% } %>
-      <% if (course.year || course.term) { %>(<%= [course.year, course.term].filter(Boolean).join(' ') %>)<% } %>
-      <% if (course.teacher) { %> - <%= course.teacher %>先生<% } %>
-    </li>
-  <% }) %>
- </ul>
+ <% courses.forEach(course => { %>
+   <div class="list-row">
+     <div class="list-row-main">
+       <div class="list-row-title">
+         <%= course.name %>
+         <% if (course.code) { %><span class="muted">[<%= course.code %>]</span><% } %>
+       </div>
+       <div class="muted">
+         <% if (course.year || course.term) { %><%= [course.year, course.term].filter(Boolean).join(' ') %><% } %>
+         <% if (course.teacher) { %> ・ <%= course.teacher %>先生<% } %>
+       </div>
+     </div>
+   </div>
+ <% }) %>
 
  <% if (currentUser) { %>
    <h2>授業を登録する</h2>
-   <form action="/courses" method="post">
-    <input type="text" name="name" placeholder="授業名" required>
-    <input type="text" name="code" placeholder="科目コード(任意)">
-    <input type="text" name="teacher" placeholder="担当教員(任意)">
-    <input type="number" name="year" placeholder="開講年度(任意)">
-    <input type="text" name="term" placeholder="学期(任意)">
-    <button type="submit">登録</button>
+   <form action="/courses" method="post" class="stack-form">
+    <div class="field">
+      <label for="name">授業名</label>
+      <input id="name" type="text" name="name" required>
+    </div>
+    <div class="field">
+      <label for="code">科目コード(任意)</label>
+      <input id="code" type="text" name="code">
+    </div>
+    <div class="field">
+      <label for="teacher">担当教員(任意)</label>
+      <input id="teacher" type="text" name="teacher">
+    </div>
+    <div class="field">
+      <label for="year">開講年度(任意)</label>
+      <input id="year" type="number" name="year">
+    </div>
+    <div class="field">
+      <label for="term">学期(任意)</label>
+      <input id="term" type="text" name="term">
+    </div>
+    <button type="submit" class="btn">登録</button>
    </form>
  <% } else { %>
    <p>授業を登録するには<a href="/login">ログイン</a>してください。</p>
  <% } %>
 
-</body>
-</html>
+<%- include('partials/foot') %>

@@ -1,102 +1,119 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title><%= order.listing.book.title %>の取引</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: order.listing.book.title + 'の取引' }) %>
 
  <h1><%= order.listing.book.title %>の取引</h1>
- <p><a href="/listings/<%= order.listing.id %>">出品詳細を見る</a></p>
+ <span class="badge <%= orderStatusBadgeClasses[order.status] %>"><%= orderStatusLabels[order.status] %></span>
+
+ <% if (error) { %>
+   <div class="alert-error"><%= error %></div>
+ <% } %>
 
  <% const isBuyer = currentUser.id === order.buyerId; %>
  <% const counterpartId = isBuyer ? order.listing.sellerId : order.buyerId; %>
  <% const counterpart = isBuyer ? order.listing.seller.name : order.buyer.name; %>
 
- <p>相手: <a href="/users/<%= counterpartId %>"><%= counterpart %>さん</a></p>
- <p>確定価格: <%= order.price %>円</p>
- <p>ステータス: <%= order.status %></p>
+ <div class="panel">
+   <p><a href="/listings/<%= order.listing.id %>">出品詳細を見る</a></p>
+   <p>相手: <a href="/users/<%= counterpartId %>"><%= counterpart %>さん</a></p>
+   <p>確定価格: <span class="price-tag"><%= order.price %>円</span></p>
+ </div>
 
- <% if (error) { %>
-   <p style="color:red"><%= error %></p>
- <% } %>
-
- <h2>待ち合わせ</h2>
- <% if (order.campus) { %>
-   <p>
-     場所: <%= campusLabels[order.campus] %>
-     <% if (order.meetupDetail) { %>(<%= order.meetupDetail %>)<% } %>
-     <br>
-     <% if (order.meetupAt) { %>日時: <%= order.meetupAt.toLocaleString('ja-JP') %><% } else { %>日時: 未設定<% } %>
-   </p>
- <% } else { %>
-   <p>まだ待ち合わせ場所が設定されていません。</p>
- <% } %>
-
- <% if (order.status === 'PENDING') { %>
-   <form action="/orders/<%= order.id %>/meetup" method="post">
-     <select name="campus" required>
-       <option value="">キャンパスを選択</option>
-       <% campuses.forEach(c => { %>
-         <option value="<%= c %>" <%= order.campus === c ? 'selected' : '' %>><%= campusLabels[c] %></option>
-       <% }) %>
-     </select>
-     <input type="text" name="meetupDetail" placeholder="集合場所の詳細(任意)" value="<%= order.meetupDetail ?? '' %>">
-     <input type="datetime-local" name="meetupAt">
-     <button type="submit">待ち合わせ情報を更新</button>
-   </form>
-
-   <h2>取引の完了</h2>
-   <p>
-     購入者の確認: <%= order.buyerConfirmedAt ? '済み(' + order.buyerConfirmedAt.toLocaleString('ja-JP') + ')' : '未確認' %><br>
-     出品者の確認: <%= order.sellerConfirmedAt ? '済み(' + order.sellerConfirmedAt.toLocaleString('ja-JP') + ')' : '未確認' %>
-   </p>
-   <p>両者が確認すると取引が完了し、出品のステータスがSOLDになります。</p>
-
-   <% if ((isBuyer && !order.buyerConfirmedAt) || (!isBuyer && !order.sellerConfirmedAt)) { %>
-     <form action="/orders/<%= order.id %>/confirm" method="post" style="display:inline">
-       <button type="submit">受け渡しを完了として確認する</button>
-     </form>
+ <div class="panel">
+   <h2>待ち合わせ</h2>
+   <% if (order.campus) { %>
+     <p>
+       場所: <%= campusLabels[order.campus] %>
+       <% if (order.meetupDetail) { %>(<%= order.meetupDetail %>)<% } %>
+       <br>
+       <% if (order.meetupAt) { %>日時: <%= order.meetupAt.toLocaleString('ja-JP') %><% } else { %>日時: 未設定<% } %>
+     </p>
+   <% } else { %>
+     <p class="muted">まだ待ち合わせ場所が設定されていません。</p>
    <% } %>
 
-   <form action="/orders/<%= order.id %>/cancel" method="post" style="display:inline">
-     <button type="submit">この取引を取消す</button>
-   </form>
+   <% if (order.status === 'PENDING') { %>
+     <form action="/orders/<%= order.id %>/meetup" method="post" class="stack-form">
+       <div class="field">
+         <label for="campus">キャンパス</label>
+         <select id="campus" name="campus" required>
+           <option value="">キャンパスを選択</option>
+           <% campuses.forEach(c => { %>
+             <option value="<%= c %>" <%= order.campus === c ? 'selected' : '' %>><%= campusLabels[c] %></option>
+           <% }) %>
+         </select>
+       </div>
+       <div class="field">
+         <label for="meetupDetail">集合場所の詳細(任意)</label>
+         <input id="meetupDetail" type="text" name="meetupDetail" value="<%= order.meetupDetail ?? '' %>">
+       </div>
+       <div class="field">
+         <label for="meetupAt">日時</label>
+         <input id="meetupAt" type="datetime-local" name="meetupAt">
+       </div>
+       <button type="submit" class="btn">待ち合わせ情報を更新</button>
+     </form>
+   <% } %>
+ </div>
+
+ <% if (order.status === 'PENDING') { %>
+   <div class="panel">
+     <h2>受け渡しの確認</h2>
+     <p>
+       購入者の確認: <%= order.buyerConfirmedAt ? '済み(' + order.buyerConfirmedAt.toLocaleString('ja-JP') + ')' : '未確認' %><br>
+       出品者の確認: <%= order.sellerConfirmedAt ? '済み(' + order.sellerConfirmedAt.toLocaleString('ja-JP') + ')' : '未確認' %>
+     </p>
+     <p class="muted">両者が確認すると取引が完了し、出品のステータスが「売却済み」になります。</p>
+
+     <% if ((isBuyer && !order.buyerConfirmedAt) || (!isBuyer && !order.sellerConfirmedAt)) { %>
+       <form action="/orders/<%= order.id %>/confirm" method="post" style="display:inline">
+         <button type="submit" class="btn">受け渡しを完了として確認する</button>
+       </form>
+     <% } %>
+
+     <form action="/orders/<%= order.id %>/cancel" method="post" style="display:inline">
+       <button type="submit" class="btn-outline">この取引を取消す</button>
+     </form>
+   </div>
  <% } %>
 
  <% if (order.status === 'COMPLETED') { %>
-   <h2>レビュー</h2>
-   <% if (myReview) { %>
-     <p>
-       あなたの評価: ★<%= myReview.score %>
-       <% if (myReview.comment) { %><br><%= myReview.comment %><% } %>
-     </p>
-     <% if (counterpartReview) { %>
+   <div class="panel">
+     <h2>レビュー</h2>
+     <% if (myReview) { %>
        <p>
-         <%= counterpart %>さんからの評価: ★<%= counterpartReview.score %>
-         <% if (counterpartReview.comment) { %><br><%= counterpartReview.comment %><% } %>
+         あなたの評価: <span class="rating">★<%= myReview.score %></span>
+         <% if (myReview.comment) { %><br><%= myReview.comment %><% } %>
        </p>
+       <% if (counterpartReview) { %>
+         <p>
+           <%= counterpart %>さんからの評価: <span class="rating">★<%= counterpartReview.score %></span>
+           <% if (counterpartReview.comment) { %><br><%= counterpartReview.comment %><% } %>
+         </p>
+       <% } else { %>
+         <p class="muted">相手がレビューを投稿すると表示されます。</p>
+       <% } %>
      <% } else { %>
-       <p>相手がレビューを投稿すると表示されます。</p>
+       <form action="/orders/<%= order.id %>/reviews" method="post" class="stack-form">
+         <div class="field">
+           <label for="score">評価</label>
+           <select id="score" name="score" required>
+             <option value="">評価を選択</option>
+             <option value="5">★5</option>
+             <option value="4">★4</option>
+             <option value="3">★3</option>
+             <option value="2">★2</option>
+             <option value="1">★1</option>
+           </select>
+         </div>
+         <div class="field">
+           <label for="comment">コメント(任意)</label>
+           <textarea id="comment" name="comment"></textarea>
+         </div>
+         <button type="submit" class="btn">レビューを投稿</button>
+       </form>
      <% } %>
-   <% } else { %>
-     <form action="/orders/<%= order.id %>/reviews" method="post">
-       <select name="score" required>
-         <option value="">評価を選択</option>
-         <option value="5">★5</option>
-         <option value="4">★4</option>
-         <option value="3">★3</option>
-         <option value="2">★2</option>
-         <option value="1">★1</option>
-       </select>
-       <textarea name="comment" placeholder="コメント(任意)"></textarea>
-       <button type="submit">レビューを投稿</button>
-     </form>
-   <% } %>
+   </div>
  <% } %>
 
  <p><a href="/orders">取引一覧に戻る</a></p>
 
-</body>
-</html>
+<%- include('partials/foot') %>

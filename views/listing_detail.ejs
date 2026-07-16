@@ -1,83 +1,84 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title><%= listing.book.title %></title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: listing.book.title }) %>
 
  <h1><%= listing.book.title %></h1>
- <p>著者: <%= listing.book.author %></p>
- <% if (listing.book.publisher) { %><p>出版社: <%= listing.book.publisher %></p><% } %>
- <% if (listing.book.edition) { %><p>版: <%= listing.book.edition %></p><% } %>
- <% if (listing.book.isbn) { %><p>ISBN: <%= listing.book.isbn %></p><% } %>
-
- <p>状態: <%= listing.condition %></p>
- <p>ステータス: <%= listing.status %></p>
+ <span class="badge <%= listingStatusBadgeClasses[listing.status] %>"><%= listingStatusLabels[listing.status] %></span>
 
  <% if (error) { %>
-   <p style="color:red"><%= error %></p>
+   <div class="alert-error"><%= error %></div>
  <% } %>
 
- <% if (listing.listingType === 'FIXED') { %>
-   <p>価格: <%= listing.price %>円</p>
- <% } else { %>
-   <p>現在価格: <%= listing.currentPrice %>円(開始価格 <%= listing.startingPrice %>円)</p>
-   <p>終了日時: <%= listing.auctionEndAt.toLocaleString('ja-JP') %></p>
+ <div class="panel">
+   <p>著者: <%= listing.book.author %></p>
+   <% if (listing.book.publisher) { %><p>出版社: <%= listing.book.publisher %></p><% } %>
+   <% if (listing.book.edition) { %><p>版: <%= listing.book.edition %></p><% } %>
+   <% if (listing.book.isbn) { %><p>ISBN: <%= listing.book.isbn %></p><% } %>
+   <p>状態: <%= listing.condition %></p>
 
-   <% if (listing.status === 'SOLD' && listing.winner) { %>
-     <p>落札者: <%= listing.winner.name %></p>
-   <% } else if (listing.status === 'CANCELLED') { %>
-     <p>入札がなかったため不成立となりました。</p>
-   <% } %>
- <% } %>
-
- <% if (listing.description) { %>
-   <p><%= listing.description %></p>
- <% } %>
-
- <p>出品者: <a href="/users/<%= listing.seller.id %>"><%= listing.seller.name %></a></p>
-
- <% if (currentUser && currentUser.id !== listing.sellerId) { %>
-   <form action="/listings/<%= listing.id %>/conversations" method="post" style="display:inline">
-     <button type="submit">出品者に質問する</button>
-   </form>
- <% } else if (!currentUser) { %>
-   <p>出品者に質問するには<a href="/login">ログイン</a>してください。</p>
- <% } %>
-
- <% if (listing.order && currentUser && (currentUser.id === listing.order.buyerId || currentUser.id === listing.sellerId)) { %>
-   <p><a href="/orders/<%= listing.order.id %>">この出品の取引ページを見る</a></p>
- <% } else if (listing.listingType === 'FIXED' && listing.status === 'ACTIVE' && currentUser && currentUser.id !== listing.sellerId) { %>
-   <form action="/listings/<%= listing.id %>/orders" method="post" style="display:inline">
-     <button type="submit">購入する</button>
-   </form>
- <% } %>
-
- <% if (listing.listingType === 'AUCTION') { %>
-   <h2>入札履歴</h2>
-   <% if (listing.bids.length === 0) { %>
-     <p>まだ入札がありません。</p>
+   <% if (listing.listingType === 'FIXED') { %>
+     <p><span class="price-tag"><%= listing.price %>円</span></p>
    <% } else { %>
-     <ul>
-       <% listing.bids.forEach(bid => { %>
-         <li><%= bid.bidder.name %>: <%= bid.amount %>円(<%= bid.createdAt.toLocaleString('ja-JP') %>)</li>
-       <% }) %>
-     </ul>
+     <p><span class="price-tag">現在 <%= listing.currentPrice %>円</span> <span class="muted">(開始価格 <%= listing.startingPrice %>円)</span></p>
+     <p>終了日時: <%= listing.auctionEndAt.toLocaleString('ja-JP') %></p>
+
+     <% if (listing.status === 'SOLD' && listing.winner) { %>
+       <p>落札者: <%= listing.winner.name %></p>
+     <% } else if (listing.status === 'CANCELLED') { %>
+       <p class="muted">入札がなかったため不成立となりました。</p>
+     <% } %>
    <% } %>
 
-   <% if (currentUser && listing.status === 'ACTIVE' && currentUser.id !== listing.sellerId) { %>
-     <form action="/listings/<%= listing.id %>/bids" method="post">
-       <input type="number" name="amount" min="<%= listing.currentPrice + 1 %>" placeholder="入札額(<%= listing.currentPrice %>円より高い金額)" required>
-       <button type="submit">入札する</button>
+   <% if (listing.description) { %>
+     <p><%= listing.description %></p>
+   <% } %>
+ </div>
+
+ <div class="panel">
+   <p>出品者: <a href="/users/<%= listing.seller.id %>"><%= listing.seller.name %></a></p>
+
+   <% if (currentUser && currentUser.id !== listing.sellerId) { %>
+     <form action="/listings/<%= listing.id %>/conversations" method="post" style="display:inline">
+       <button type="submit" class="btn-outline">出品者に質問する</button>
      </form>
    <% } else if (!currentUser) { %>
-     <p>入札するには<a href="/login">ログイン</a>してください。</p>
+     <p>出品者に質問するには<a href="/login">ログイン</a>してください。</p>
    <% } %>
+
+   <% if (listing.order && currentUser && (currentUser.id === listing.order.buyerId || currentUser.id === listing.sellerId)) { %>
+     <p><a href="/orders/<%= listing.order.id %>" class="btn">この出品の取引ページを見る</a></p>
+   <% } else if (listing.listingType === 'FIXED' && listing.status === 'ACTIVE' && currentUser && currentUser.id !== listing.sellerId) { %>
+     <form action="/listings/<%= listing.id %>/orders" method="post" style="display:inline">
+       <button type="submit" class="btn">購入する</button>
+     </form>
+   <% } %>
+ </div>
+
+ <% if (listing.listingType === 'AUCTION') { %>
+   <div class="panel">
+     <h2>入札履歴</h2>
+     <% if (listing.bids.length === 0) { %>
+       <p class="muted">まだ入札がありません。</p>
+     <% } else { %>
+       <ul>
+         <% listing.bids.forEach(bid => { %>
+           <li><%= bid.bidder.name %>: <%= bid.amount %>円(<%= bid.createdAt.toLocaleString('ja-JP') %>)</li>
+         <% }) %>
+       </ul>
+     <% } %>
+
+     <% if (currentUser && listing.status === 'ACTIVE' && currentUser.id !== listing.sellerId) { %>
+       <form action="/listings/<%= listing.id %>/bids" method="post" class="stack-form">
+         <div class="field">
+           <label for="amount">入札額(<%= listing.currentPrice %>円より高い金額)</label>
+           <input id="amount" type="number" name="amount" min="<%= listing.currentPrice + 1 %>" required>
+         </div>
+         <button type="submit" class="btn">入札する</button>
+       </form>
+     <% } else if (!currentUser) { %>
+       <p>入札するには<a href="/login">ログイン</a>してください。</p>
+     <% } %>
+   </div>
  <% } %>
 
  <p><a href="/listings">出品一覧に戻る</a></p>
 
-</body>
-</html>
+<%- include('partials/foot') %>

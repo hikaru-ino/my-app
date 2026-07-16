@@ -1,11 +1,4 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title><%= conversation.listing.book.title %>についての会話</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: conversation.listing.book.title + 'についての会話' }) %>
 
  <h1><%= conversation.listing.book.title %>についての会話</h1>
  <% const isBuyer = conversation.buyerId === currentUser.id; %>
@@ -13,28 +6,33 @@
  <% const counterpart = isBuyer ? conversation.listing.seller.name : conversation.buyer.name; %>
  <p>
    相手: <a href="/users/<%= counterpartId %>"><%= counterpart %>さん</a>
-   <br>
-   <a href="/listings/<%= conversation.listing.id %>">出品詳細を見る</a>
+   ・ <a href="/listings/<%= conversation.listing.id %>">出品詳細を見る</a>
  </p>
 
- <ul>
+ <div class="panel">
+   <% if (conversation.messages.length === 0) { %>
+     <p class="muted">まだメッセージがありません。</p>
+   <% } %>
    <% conversation.messages.forEach(m => { %>
-     <li>
-       <strong><%= m.sender.name %></strong>(<%= m.createdAt.toLocaleString('ja-JP') %>): <%= m.body %>
-     </li>
+     <div class="message <%= m.senderId === currentUser.id ? 'message-mine' : 'message-theirs' %>">
+       <div class="message-meta"><strong><%= m.sender.name %></strong> <span class="muted"><%= m.createdAt.toLocaleString('ja-JP') %></span></div>
+       <div class="message-body"><%= m.body %></div>
+     </div>
    <% }) %>
- </ul>
+ </div>
 
  <% if (error) { %>
-   <p style="color:red"><%= error %></p>
+   <div class="alert-error"><%= error %></div>
  <% } %>
 
- <form action="/conversations/<%= conversation.id %>/messages" method="post">
-   <textarea name="body" required></textarea>
-   <button type="submit">送信</button>
+ <form action="/conversations/<%= conversation.id %>/messages" method="post" class="stack-form">
+   <div class="field">
+     <label for="body">メッセージ</label>
+     <textarea id="body" name="body" required></textarea>
+   </div>
+   <button type="submit" class="btn">送信</button>
  </form>
 
  <p><a href="/conversations">会話一覧に戻る</a></p>
 
-</body>
-</html>
+<%- include('partials/foot') %>

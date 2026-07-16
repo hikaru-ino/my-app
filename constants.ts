@@ -31,3 +31,29 @@ export const REVIEW_SCORE_MAX = 5;
 export function isAllowedScore(score: number): boolean {
   return Number.isInteger(score) && score >= REVIEW_SCORE_MIN && score <= REVIEW_SCORE_MAX;
 }
+
+export const LISTING_STATUS_LABELS: Record<string, string> = {
+  ACTIVE: "出品中",
+  IN_TRANSACTION: "取引中",
+  SOLD: "売却済み",
+  CANCELLED: "取消",
+};
+
+export const LISTING_STATUS_BADGE_CLASSES: Record<string, string> = {
+  ACTIVE: "badge-live",
+  IN_TRANSACTION: "badge-progress",
+  SOLD: "badge-done",
+  CANCELLED: "badge-muted",
+};
+
+export const ORDER_STATUS_LABELS: Record<string, string> = {
+  PENDING: "調整中",
+  COMPLETED: "完了",
+  CANCELLED: "取消",
+};
+
+export const ORDER_STATUS_BADGE_CLASSES: Record<string, string> = {
+  PENDING: "badge-live",
+  COMPLETED: "badge-done",
+  CANCELLED: "badge-muted",
+};

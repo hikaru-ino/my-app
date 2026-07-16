@@ -1,63 +1,74 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>教科書マスタ</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: '教科書マスタ' }) %>
 
  <h1>教科書マスタ</h1>
- <p>ここは教科書そのもの(タイトル・著者など)の情報を管理する一覧です。実際の売買は<a href="/listings">出品一覧</a>から行います。</p>
+ <p class="muted">ここは教科書そのもの(タイトル・著者など)の情報を管理する一覧です。実際の売買は<a href="/listings">出品一覧</a>から行います。</p>
 
  <% if (error) { %>
-   <p style="color: red;"><%= error %></p>
+   <div class="alert-error"><%= error %></div>
  <% } %>
 
- <ul>
-  <% books.forEach(book => { %>
-    <li>
-      <%= book.title %> / <%= book.author %>
-      <% if (book.publisher) { %>(<%= book.publisher %>)<% } %>
-      <% if (book.edition) { %> <%= book.edition %><% } %>
-      <% if (book.isbn) { %> [ISBN: <%= book.isbn %>]<% } %>
+ <% books.forEach(book => { %>
+   <div class="list-row">
+     <div class="list-row-main">
+       <div class="list-row-title"><%= book.title %> / <%= book.author %></div>
+       <div class="muted">
+         <% if (book.publisher) { %><%= book.publisher %><% } %>
+         <% if (book.edition) { %> <%= book.edition %><% } %>
+         <% if (book.isbn) { %> [ISBN: <%= book.isbn %>]<% } %>
+       </div>
 
-      <% if (book.courses.length > 0) { %>
-        <br>使用授業:
-        <% book.courses.forEach((cb, i) => { %><%= i > 0 ? ', ' : '' %><%= cb.course.name %><% if (cb.course.year || cb.course.term) { %>(<%= [cb.course.year, cb.course.term].filter(Boolean).join(' ') %>)<% } %><% }) %>
-      <% } %>
+       <% if (book.courses.length > 0) { %>
+         <div class="tag-list">
+           <% book.courses.forEach(cb => { %>
+             <span class="tag"><%= cb.course.name %><% if (cb.course.year || cb.course.term) { %>(<%= [cb.course.year, cb.course.term].filter(Boolean).join(' ') %>)<% } %></span>
+           <% }) %>
+         </div>
+       <% } %>
+     </div>
 
-      <% if (currentUser) { %>
-        <br>
-        <form action="/books/<%= book.id %>/courses" method="post" style="display:inline">
-          <select name="courseId" required>
-            <option value="">授業を選択して紐付ける</option>
-            <% courses.forEach(course => { %>
-              <option value="<%= course.id %>">
-                <%= course.name %><% if (course.year || course.term) { %> (<%= [course.year, course.term].filter(Boolean).join(' ') %>)<% } %>
-              </option>
-            <% }) %>
-          </select>
-          <button type="submit">紐付ける</button>
-        </form>
-      <% } %>
-    </li>
-  <% }) %>
- </ul>
+     <% if (currentUser) { %>
+       <form action="/books/<%= book.id %>/courses" method="post" class="list-row-side">
+         <select name="courseId" required>
+           <option value="">授業を選択して紐付ける</option>
+           <% courses.forEach(course => { %>
+             <option value="<%= course.id %>">
+               <%= course.name %><% if (course.year || course.term) { %> (<%= [course.year, course.term].filter(Boolean).join(' ') %>)<% } %>
+             </option>
+           <% }) %>
+         </select>
+         <button type="submit" class="btn-outline">紐付ける</button>
+       </form>
+     <% } %>
+   </div>
+ <% }) %>
 
  <% if (currentUser) { %>
    <h2>教科書を登録する</h2>
-   <form action="/books" method="post">
-    <input type="text" name="title" placeholder="タイトル" required>
-    <input type="text" name="author" placeholder="著者" required>
-    <input type="text" name="publisher" placeholder="出版社(任意)">
-    <input type="text" name="edition" placeholder="版(任意)">
-    <input type="text" name="isbn" placeholder="ISBN(任意)">
-    <button type="submit">登録</button>
+   <form action="/books" method="post" class="stack-form">
+    <div class="field">
+      <label for="title">タイトル</label>
+      <input id="title" type="text" name="title" required>
+    </div>
+    <div class="field">
+      <label for="author">著者</label>
+      <input id="author" type="text" name="author" required>
+    </div>
+    <div class="field">
+      <label for="publisher">出版社(任意)</label>
+      <input id="publisher" type="text" name="publisher">
+    </div>
+    <div class="field">
+      <label for="edition">版(任意)</label>
+      <input id="edition" type="text" name="edition">
+    </div>
+    <div class="field">
+      <label for="isbn">ISBN(任意)</label>
+      <input id="isbn" type="text" name="isbn">
+    </div>
+    <button type="submit" class="btn">登録</button>
    </form>
  <% } else { %>
    <p>教科書を登録するには<a href="/login">ログイン</a>してください。</p>
  <% } %>
 
-</body>
-</html>
+<%- include('partials/foot') %>

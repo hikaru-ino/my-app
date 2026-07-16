@@ -1,61 +1,67 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>出品する</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: '出品する' }) %>
 
  <h1>出品する</h1>
 
  <% if (error) { %>
-   <p style="color: red;"><%= error %></p>
+   <div class="alert-error"><%= error %></div>
  <% } %>
 
  <% if (books.length === 0) { %>
    <p>出品できる教科書がまだありません。先に<a href="/books">教科書マスタ</a>から登録してください。</p>
  <% } else { %>
-   <form action="/listings" method="post">
-    <label>教科書
-      <select name="bookId" required>
+   <form action="/listings" method="post" class="stack-form">
+    <div class="field">
+      <label for="bookId">教科書</label>
+      <select id="bookId" name="bookId" required>
         <option value="">選択してください</option>
         <% books.forEach(book => { %>
           <option value="<%= book.id %>"><%= book.title %> / <%= book.author %></option>
         <% }) %>
       </select>
-    </label>
-    <p>教科書がまだ登録されていない場合は<a href="/books">教科書マスタ</a>から先に登録してください。</p>
+    </div>
+    <p class="muted">教科書がまだ登録されていない場合は<a href="/books">教科書マスタ</a>から先に登録してください。</p>
 
-    <label>販売形式
-      <select name="listingType" id="listingType" required>
+    <div class="field">
+      <label for="listingType">販売形式</label>
+      <select id="listingType" name="listingType" required>
         <option value="FIXED">販売形式(固定価格)</option>
         <option value="AUCTION">オークション形式</option>
       </select>
-    </label>
+    </div>
 
-    <label>状態
-      <select name="condition" required>
+    <div class="field">
+      <label for="condition">状態</label>
+      <select id="condition" name="condition" required>
         <% conditions.forEach(c => { %>
           <option value="<%= c %>"><%= c %></option>
         <% }) %>
       </select>
-    </label>
+    </div>
 
     <div id="fixedFields">
-      <input type="number" name="price" placeholder="価格(円)">
+      <div class="field">
+        <label for="price">価格(円)</label>
+        <input id="price" type="number" name="price">
+      </div>
     </div>
 
     <div id="auctionFields">
-      <input type="number" name="startingPrice" placeholder="開始価格(円)">
-      <input type="datetime-local" name="auctionEndAt">
+      <div class="field">
+        <label for="startingPrice">開始価格(円)</label>
+        <input id="startingPrice" type="number" name="startingPrice">
+      </div>
+      <div class="field">
+        <label for="auctionEndAt">終了日時</label>
+        <input id="auctionEndAt" type="datetime-local" name="auctionEndAt">
+      </div>
     </div>
 
-    <div>
-      <textarea name="description" placeholder="説明文(任意)"></textarea>
+    <div class="field">
+      <label for="description">説明文(任意)</label>
+      <textarea id="description" name="description"></textarea>
     </div>
 
-    <button type="submit">出品する</button>
+    <button type="submit" class="btn">出品する</button>
    </form>
 
    <script>
@@ -72,5 +78,4 @@
    </script>
  <% } %>
 
-</body>
-</html>
+<%- include('partials/foot') %>

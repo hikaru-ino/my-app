@@ -1,33 +1,30 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>取引一覧</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: '取引一覧' }) %>
 
  <h1>取引一覧</h1>
 
  <% if (orders.length === 0) { %>
-   <p>まだ取引がありません。</p>
+   <p class="muted">まだ取引がありません。</p>
  <% } else { %>
-   <ul>
-     <% orders.forEach(order => { %>
-       <li>
-         <a href="/orders/<%= order.id %>">
-           [<%= order.isSeller ? '出品者として' : '購入者として' %>]
+   <% orders.forEach(order => { %>
+     <div class="list-row">
+       <div class="list-row-main">
+         <a class="list-row-title" href="/orders/<%= order.id %>">
+           <span class="tag"><%= order.isSeller ? '出品者として' : '購入者として' %></span>
            <%= order.listing.book.title %>
-           (<%= order.price %>円 / <%= order.status %>)
          </a>
-         — <a href="/users/<%= order.isSeller ? order.buyerId : order.listing.sellerId %>"><%= order.isSeller ? order.buyer.name : order.listing.seller.name %>さん</a>
-         <% if (order.campus) { %>
-           <br><%= campusLabels[order.campus] %><% if (order.meetupAt) { %> <%= order.meetupAt.toLocaleString('ja-JP') %><% } %>
-         <% } %>
-       </li>
-     <% }) %>
-   </ul>
+         <div class="muted">
+           <a href="/users/<%= order.isSeller ? order.buyerId : order.listing.sellerId %>"><%= order.isSeller ? order.buyer.name : order.listing.seller.name %>さん</a>
+           <% if (order.campus) { %>
+             ・ <%= campusLabels[order.campus] %><% if (order.meetupAt) { %> <%= order.meetupAt.toLocaleString('ja-JP') %><% } %>
+           <% } %>
+         </div>
+       </div>
+       <div class="list-row-side">
+         <span class="price-tag"><%= order.price %>円</span>
+         <span class="badge <%= orderStatusBadgeClasses[order.status] %>"><%= orderStatusLabels[order.status] %></span>
+       </div>
+     </div>
+   <% }) %>
  <% } %>
 
-</body>
-</html>
+<%- include('partials/foot') %>

@@ -1,33 +1,28 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title><%= profileUser.name %>さんの評価</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: profileUser.name + 'さんの評価' }) %>
 
  <h1><%= profileUser.name %>さん</h1>
 
- <% if (reviewCount === 0) { %>
-   <p>まだ評価がありません。</p>
- <% } else { %>
-   <p>★<%= averageScore.toFixed(1) %>(<%= reviewCount %>件)</p>
- <% } %>
+ <div class="panel">
+   <% if (reviewCount === 0) { %>
+     <p class="muted">まだ評価がありません。</p>
+   <% } else { %>
+     <p class="rating">★<%= averageScore.toFixed(1) %> <span class="muted">(<%= reviewCount %>件)</span></p>
+   <% } %>
+ </div>
 
  <h2>受け取ったレビュー</h2>
  <% if (reviews.length === 0) { %>
-   <p>まだレビューがありません。</p>
+   <p class="muted">まだレビューがありません。</p>
  <% } else { %>
-   <ul>
-     <% reviews.forEach(review => { %>
-       <li>
-         ★<%= review.score %> <%= review.reviewer.name %>さん(<%= review.order.listing.book.title %>・<%= review.createdAt.toLocaleString('ja-JP') %>)
-         <% if (review.comment) { %><br><%= review.comment %><% } %>
-       </li>
-     <% }) %>
-   </ul>
+   <% reviews.forEach(review => { %>
+     <div class="list-row">
+       <div class="list-row-main">
+         <div><span class="rating">★<%= review.score %></span> <%= review.reviewer.name %>さん</div>
+         <div class="muted"><%= review.order.listing.book.title %> ・ <%= review.createdAt.toLocaleString('ja-JP') %></div>
+         <% if (review.comment) { %><p><%= review.comment %></p><% } %>
+       </div>
+     </div>
+   <% }) %>
  <% } %>
 
-</body>
-</html>
+<%- include('partials/foot') %>

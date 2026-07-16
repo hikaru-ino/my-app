@@ -1,35 +1,31 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>会話一覧</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: '会話一覧' }) %>
 
  <h1>会話一覧</h1>
 
  <% if (conversations.length === 0) { %>
-   <p>まだ会話がありません。</p>
+   <p class="muted">まだ会話がありません。</p>
  <% } else { %>
-   <ul>
-     <% conversations.forEach(c => { %>
-       <li>
-         <a href="/conversations/<%= c.id %>">
-           [<%= c.isSeller ? '出品者として' : '質問者として' %>]
+   <% conversations.forEach(c => { %>
+     <div class="list-row">
+       <div class="list-row-main">
+         <a class="list-row-title" href="/conversations/<%= c.id %>">
+           <span class="tag"><%= c.isSeller ? '出品者として' : '質問者として' %></span>
            <%= c.listing.book.title %>
          </a>
-         — <a href="/users/<%= c.isSeller ? c.buyerId : c.listing.sellerId %>"><%= c.isSeller ? c.buyer.name : c.listing.seller.name %>さん</a>
-         <br>
-         <% if (c.messages[0]) { %>
-           <%= c.messages[0].body.slice(0, 40) %>(<%= c.lastMessageAt.toLocaleString('ja-JP') %>)
-         <% } else { %>
-           まだメッセージがありません(<%= c.lastMessageAt.toLocaleString('ja-JP') %>)
-         <% } %>
-       </li>
-     <% }) %>
-   </ul>
+         <div class="muted">
+           <% if (c.messages[0]) { %>
+             <%= c.messages[0].body.slice(0, 40) %>
+           <% } else { %>
+             まだメッセージがありません
+           <% } %>
+         </div>
+       </div>
+       <div class="list-row-side">
+         <a href="/users/<%= c.isSeller ? c.buyerId : c.listing.sellerId %>"><%= c.isSeller ? c.buyer.name : c.listing.seller.name %>さん</a>
+         <span class="muted"><%= c.lastMessageAt.toLocaleString('ja-JP') %></span>
+       </div>
+     </div>
+   <% }) %>
  <% } %>
 
-</body>
-</html>
+<%- include('partials/foot') %>

@@ -1,17 +1,19 @@
-<nav>
-  <a href="/">トップ</a> |
-  <a href="/listings">出品一覧</a> |
-  <a href="/books">教科書マスタ</a> |
-  <a href="/courses">授業一覧</a> |
-  <% if (currentUser) { %>
-    <a href="/conversations">会話一覧</a> |
-    <a href="/orders">取引一覧</a> |
-    <%= currentUser.name %>さん
-    <form action="/logout" method="post" style="display:inline">
-      <button type="submit">ログアウト</button>
-    </form>
-  <% } else { %>
-    <a href="/login">ログイン</a> / <a href="/signup">新規登録</a>
-  <% } %>
+<nav class="site-nav">
+  <a href="/" class="logo">慶應<span class="logo-accent">Books</span></a>
+  <div class="nav-links">
+    <a href="/listings">出品一覧</a>
+    <a href="/books">教科書マスタ</a>
+    <a href="/courses">授業一覧</a>
+    <% if (currentUser) { %>
+      <a href="/conversations">会話一覧</a>
+      <a href="/orders">取引一覧</a>
+      <span class="nav-user"><%= currentUser.name %>さん</span>
+      <form action="/logout" method="post" style="display:inline">
+        <button type="submit" class="btn-outline-inverse">ログアウト</button>
+      </form>
+    <% } else { %>
+      <a href="/login">ログイン</a>
+      <a href="/signup">新規登録</a>
+    <% } %>
+  </div>
 </nav>
-<hr>

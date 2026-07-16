@@ -1,11 +1,4 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>慶應Books</title>
-</head>
-<body>
- <%- include('partials/nav') %>
+<%- include('partials/head', { title: '慶應Books' }) %>
 
  <h1>慶應Books</h1>
 
@@ -15,5 +8,6 @@
    <p>慶應生同士で教科書を売買できるサービスです。</p>
  <% } %>
 
-</body>
-</html>
+ <p><a href="/listings" class="btn">出品一覧を見る</a></p>
+
+<%- include('partials/foot') %>
