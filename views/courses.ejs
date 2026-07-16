@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>授業一覧</title>
+</head>
+<body>
+ <%- include('partials/nav') %>
+
+ <h1>授業一覧</h1>
+
+ <% if (error) { %>
+   <p style="color: red;"><%= error %></p>
+ <% } %>
+
+ <ul>
+  <% courses.forEach(course => { %>
+    <li>
+      <%= course.name %>
+      <% if (course.code) { %>[<%= course.code %>]<% } %>
+      <% if (course.year || course.term) { %>(<%= [course.year, course.term].filter(Boolean).join(' ') %>)<% } %>
+      <% if (course.teacher) { %> - <%= course.teacher %>先生<% } %>
+    </li>
+  <% }) %>
+ </ul>
+
+ <% if (currentUser) { %>
+   <h2>授業を登録する</h2>
+   <form action="/courses" method="post">
+    <input type="text" name="name" placeholder="授業名" required>
+    <input type="text" name="code" placeholder="科目コード(任意)">
+    <input type="text" name="teacher" placeholder="担当教員(任意)">
+    <input type="number" name="year" placeholder="開講年度(任意)">
+    <input type="text" name="term" placeholder="学期(任意)">
+    <button type="submit">登録</button>
+   </form>
+ <% } else { %>
+   <p>授業を登録するには<a href="/login">ログイン</a>してください。</p>
+ <% } %>
+
+</body>
+</html>

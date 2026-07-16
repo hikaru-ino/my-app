@@ -21,6 +21,26 @@
       <% if (book.publisher) { %>(<%= book.publisher %>)<% } %>
       <% if (book.edition) { %> <%= book.edition %><% } %>
       <% if (book.isbn) { %> [ISBN: <%= book.isbn %>]<% } %>
+
+      <% if (book.courses.length > 0) { %>
+        <br>使用授業:
+        <% book.courses.forEach((cb, i) => { %><%= i > 0 ? ', ' : '' %><%= cb.course.name %><% if (cb.course.year || cb.course.term) { %>(<%= [cb.course.year, cb.course.term].filter(Boolean).join(' ') %>)<% } %><% }) %>
+      <% } %>
+
+      <% if (currentUser) { %>
+        <br>
+        <form action="/books/<%= book.id %>/courses" method="post" style="display:inline">
+          <select name="courseId" required>
+            <option value="">授業を選択して紐付ける</option>
+            <% courses.forEach(course => { %>
+              <option value="<%= course.id %>">
+                <%= course.name %><% if (course.year || course.term) { %> (<%= [course.year, course.term].filter(Boolean).join(' ') %>)<% } %>
+              </option>
+            <% }) %>
+          </select>
+          <button type="submit">紐付ける</button>
+        </form>
+      <% } %>
     </li>
   <% }) %>
  </ul>

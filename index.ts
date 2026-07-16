@@ -119,9 +119,17 @@ app.post("/logout", (req, res) => {
   });
 });
 
+async function loadBooksPageData() {
+  const [books, courses] = await Promise.all([
+    prisma.book.findMany({ include: { courses: { include: { course: true } } } }),
+    prisma.course.findMany({ orderBy: [{ name: "asc" }, { year: "desc" }] }),
+  ]);
+  return { books, courses };
+}
+
 app.get("/books", async (req, res) => {
-  const books = await prisma.book.findMany();
-  res.render("books", { books, error: null });
+  const { books, courses } = await loadBooksPageData();
+  res.render("books", { books, courses, error: null });
 });
 
 app.post("/books", requireLogin, async (req, res) => {
@@ -132,8 +140,8 @@ app.post("/books", requireLogin, async (req, res) => {
   const edition = req.body.edition || null;
 
   if (!title || !author) {
-    const books = await prisma.book.findMany();
-    return res.status(400).render("books", { books, error: "タイトルと著者は必須です" });
+    const { books, courses } = await loadBooksPageData();
+    return res.status(400).render("books", { books, courses, error: "タイトルと著者は必須です" });
   }
 
   if (isbn) {
@@ -157,13 +165,115 @@ app.post("/books", requireLogin, async (req, res) => {
   res.redirect("/books");
 });
 
-app.get("/listings", async (req, res) => {
-  const listings = await prisma.listing.findMany({
-    where: { status: "ACTIVE" },
-    orderBy: { createdAt: "desc" },
-    include: { book: true, seller: true },
+app.post("/books/:id/courses", requireLogin, async (req, res) => {
+  const bookId = Number(req.params.id);
+  const courseId = req.body.courseId ? Number(req.body.courseId) : null;
+
+  const book = await prisma.book.findUnique({ where: { id: bookId } });
+  if (!book || !courseId) {
+    return res.redirect("/books");
+  }
+  const course = await prisma.course.findUnique({ where: { id: courseId } });
+  if (!course) {
+    return res.redirect("/books");
+  }
+
+  const existing = await prisma.courseBook.findUnique({
+    where: { bookId_courseId: { bookId, courseId } },
   });
-  res.render("listings", { listings });
+  if (existing) {
+    // 既にこの本とこの授業は紐付け済み。重複作成せずそのまま戻る
+    return res.redirect("/books");
+  }
+
+  try {
+    await prisma.courseBook.create({ data: { bookId, courseId } });
+  } catch (err) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+      return res.redirect("/books");
+    }
+    throw err;
+  }
+
+  res.redirect("/books");
+});
+
+app.get("/courses", async (req, res) => {
+  const courses = await prisma.course.findMany({ orderBy: [{ name: "asc" }, { year: "desc" }] });
+  res.render("courses", { courses, error: null });
+});
+
+app.post("/courses", requireLogin, async (req, res) => {
+  const name = req.body.name;
+  const code = req.body.code || null;
+  const teacher = req.body.teacher || null;
+  const year = req.body.year ? Number(req.body.year) : null;
+  const term = req.body.term || null;
+
+  if (!name) {
+    const courses = await prisma.course.findMany({ orderBy: [{ name: "asc" }, { year: "desc" }] });
+    return res.status(400).render("courses", { courses, error: "授業名は必須です" });
+  }
+
+  await prisma.course.create({ data: { name, code, teacher, year, term } });
+  res.redirect("/courses");
+});
+
+app.get("/listings", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q : "";
+  const courseId = req.query.courseId ? Number(req.query.courseId) : null;
+  const condition = typeof req.query.condition === "string" ? req.query.condition : "";
+  const listingType =
+    req.query.listingType === "FIXED" || req.query.listingType === "AUCTION" ? req.query.listingType : "";
+  const minPrice = req.query.minPrice ? Number(req.query.minPrice) : null;
+  const maxPrice = req.query.maxPrice ? Number(req.query.maxPrice) : null;
+
+  const whereClauses: Prisma.ListingWhereInput[] = [];
+
+  if (q) {
+    whereClauses.push({
+      book: {
+        OR: [{ title: { contains: q, mode: "insensitive" } }, { author: { contains: q, mode: "insensitive" } }],
+      },
+    });
+  }
+  if (courseId) {
+    whereClauses.push({ book: { courses: { some: { courseId } } } });
+  }
+  if (condition) {
+    whereClauses.push({ condition });
+  }
+  if (listingType) {
+    whereClauses.push({ listingType });
+  }
+  if (minPrice !== null || maxPrice !== null) {
+    const priceRange = {
+      gte: minPrice ?? undefined,
+      lte: maxPrice ?? undefined,
+    };
+    whereClauses.push({
+      OR: [
+        { listingType: "FIXED", price: priceRange },
+        { listingType: "AUCTION", currentPrice: priceRange },
+      ],
+    });
+  }
+
+  const [listings, courses] = await Promise.all([
+    prisma.listing.findMany({
+      where: { status: "ACTIVE", AND: whereClauses },
+      orderBy: { createdAt: "desc" },
+      include: { book: true, seller: true },
+    }),
+    prisma.course.findMany({ orderBy: [{ name: "asc" }, { year: "desc" }] }),
+  ]);
+
+  res.render("listings", {
+    listings,
+    courses,
+    conditions: BOOK_CONDITIONS,
+    filters: { q, courseId, condition, listingType, minPrice, maxPrice },
+  });
 });
 
 app.get("/listings/new", requireLogin, async (req, res) => {

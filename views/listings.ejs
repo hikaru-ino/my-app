@@ -15,6 +15,38 @@
    <p>出品するには<a href="/login">ログイン</a>してください。</p>
  <% } %>
 
+ <form action="/listings" method="get">
+  <input type="text" name="q" placeholder="タイトル・著者で検索" value="<%= filters.q %>">
+
+  <select name="courseId">
+    <option value="">すべての授業</option>
+    <% courses.forEach(course => { %>
+      <option value="<%= course.id %>" <%= String(filters.courseId) === String(course.id) ? 'selected' : '' %>>
+        <%= course.name %><% if (course.year || course.term) { %> (<%= [course.year, course.term].filter(Boolean).join(' ') %>)<% } %>
+      </option>
+    <% }) %>
+  </select>
+
+  <select name="condition">
+    <option value="">すべての状態</option>
+    <% conditions.forEach(c => { %>
+      <option value="<%= c %>" <%= filters.condition === c ? 'selected' : '' %>><%= c %></option>
+    <% }) %>
+  </select>
+
+  <select name="listingType">
+    <option value="">すべての形式</option>
+    <option value="FIXED" <%= filters.listingType === 'FIXED' ? 'selected' : '' %>>販売形式</option>
+    <option value="AUCTION" <%= filters.listingType === 'AUCTION' ? 'selected' : '' %>>オークション形式</option>
+  </select>
+
+  <input type="number" name="minPrice" placeholder="価格下限" value="<%= filters.minPrice ?? '' %>">
+  <input type="number" name="maxPrice" placeholder="価格上限" value="<%= filters.maxPrice ?? '' %>">
+
+  <button type="submit">絞り込む</button>
+  <a href="/listings">条件をクリア</a>
+ </form>
+
  <ul>
   <% listings.forEach(listing => { %>
     <li>
