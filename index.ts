@@ -6,7 +6,15 @@ import session from "express-session";
 import { Pool } from "pg";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, Prisma } from "./generated/prisma/client";
-import { ALLOWED_EMAIL_DOMAINS, isAllowedEmail, BOOK_CONDITIONS, isAllowedCondition } from "./constants";
+import {
+  ALLOWED_EMAIL_DOMAINS,
+  isAllowedEmail,
+  BOOK_CONDITIONS,
+  isAllowedCondition,
+  CAMPUSES,
+  CAMPUS_LABELS,
+  isAllowedCampus,
+} from "./constants";
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
@@ -220,6 +228,7 @@ app.post("/courses", requireLogin, async (req, res) => {
 });
 
 class BidError extends Error {}
+class PurchaseError extends Error {}
 
 // ACTIVEかつauctionEndAtを過ぎたAUCTIONを確定する。何度呼んでも安全(冪等)。
 // Bid受付時・詳細表示時・一覧表示時のいずれからも呼ばれる遅延評価(lazy finalize)方式。
@@ -237,10 +246,16 @@ async function finalizeIfExpired(client: Prisma.TransactionClient, listingId: nu
     orderBy: { amount: "desc" },
   });
 
-  await client.listing.updateMany({
+  const updated = await client.listing.updateMany({
     where: { id: listingId, status: "ACTIVE" },
-    data: topBid ? { status: "SOLD", winnerId: topBid.bidderId } : { status: "CANCELLED" },
+    data: topBid ? { status: "IN_TRANSACTION", winnerId: topBid.bidderId } : { status: "CANCELLED" },
   });
+
+  if (updated.count > 0 && topBid) {
+    await client.order.create({
+      data: { listingId, buyerId: topBid.bidderId, price: listing.currentPrice ?? topBid.amount },
+    });
+  }
 }
 
 async function finalizeExpiredAuctions() {
@@ -262,6 +277,7 @@ async function loadListingDetail(id: number) {
       seller: true,
       winner: true,
       bids: { include: { bidder: true }, orderBy: { amount: "desc" } },
+      order: true,
     },
   });
 }
@@ -463,6 +479,51 @@ app.post("/listings/:id/bids", requireLogin, async (req, res) => {
   res.redirect(`/listings/${id}`);
 });
 
+app.post("/listings/:id/orders", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const buyerId = res.locals.currentUser.id;
+
+  const renderError = async (error: string) => {
+    const listing = await loadListingDetail(id);
+    if (!listing) {
+      return res.status(404).send("Not Found");
+    }
+    return res.status(400).render("listing_detail", { listing, error });
+  };
+
+  const listing = await prisma.listing.findUnique({ where: { id } });
+  if (!listing) {
+    return res.status(404).send("Not Found");
+  }
+  if (listing.listingType !== "FIXED") {
+    return renderError("この出品には購入できません");
+  }
+  if (listing.sellerId === buyerId) {
+    return renderError("自分の出品は購入できません");
+  }
+
+  let order;
+  try {
+    order = await prisma.$transaction(async (tx) => {
+      const updated = await tx.listing.updateMany({
+        where: { id, status: "ACTIVE" },
+        data: { status: "IN_TRANSACTION" },
+      });
+      if (updated.count === 0) {
+        throw new PurchaseError("この出品は既に取引中か終了しています");
+      }
+      return tx.order.create({ data: { listingId: id, buyerId, price: listing.price! } });
+    });
+  } catch (err) {
+    if (err instanceof PurchaseError) {
+      return renderError(err.message);
+    }
+    throw err;
+  }
+
+  res.redirect(`/orders/${order.id}`);
+});
+
 app.post("/listings/:id/conversations", requireLogin, async (req, res) => {
   const listingId = Number(req.params.id);
   const buyerId = res.locals.currentUser.id;
@@ -552,6 +613,133 @@ app.post("/conversations/:id/messages", requireLogin, async (req, res) => {
   });
 
   res.redirect(`/conversations/${id}`);
+});
+
+// Orderの当事者(買い手 or その出品の出品者)以外には存在自体を明かさないため、
+// 権限がない場合は403ではなくnullを返す(呼び出し側で404にする)。
+async function loadOrderForUser(id: number, userId: number) {
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: {
+      listing: { include: { book: true, seller: true } },
+      buyer: true,
+    },
+  });
+  if (!order) {
+    return null;
+  }
+  const isParticipant = order.buyerId === userId || order.listing.sellerId === userId;
+  return isParticipant ? order : null;
+}
+
+app.get("/orders", requireLogin, async (req, res) => {
+  const userId = res.locals.currentUser.id;
+
+  const orders = await prisma.order.findMany({
+    where: { OR: [{ buyerId: userId }, { listing: { sellerId: userId } }] },
+    include: {
+      listing: { include: { book: true, seller: true } },
+      buyer: true,
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
+  const withRole = orders.map((order) => ({ ...order, isSeller: order.listing.sellerId === userId }));
+
+  res.render("orders", { orders: withRole, campusLabels: CAMPUS_LABELS });
+});
+
+app.get("/orders/:id", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const order = await loadOrderForUser(id, res.locals.currentUser.id);
+  if (!order) {
+    return res.status(404).send("Not Found");
+  }
+  res.render("order_detail", { order, error: null, campuses: CAMPUSES, campusLabels: CAMPUS_LABELS });
+});
+
+app.post("/orders/:id/meetup", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const order = await loadOrderForUser(id, res.locals.currentUser.id);
+  if (!order) {
+    return res.status(404).send("Not Found");
+  }
+
+  const renderError = (error: string) =>
+    res.status(400).render("order_detail", { order, error, campuses: CAMPUSES, campusLabels: CAMPUS_LABELS });
+
+  if (order.status !== "PENDING") {
+    return renderError("この取引は既に確定または取消されています");
+  }
+
+  const campus = req.body.campus;
+  const meetupDetail = req.body.meetupDetail || null;
+  const meetupAt = req.body.meetupAt ? new Date(req.body.meetupAt) : null;
+
+  if (!campus || !isAllowedCampus(campus)) {
+    return renderError("待ち合わせキャンパスを選択してください");
+  }
+  if (req.body.meetupAt && (!meetupAt || Number.isNaN(meetupAt.getTime()))) {
+    return renderError("日時の形式が正しくありません");
+  }
+
+  await prisma.order.update({
+    where: { id },
+    data: { campus, meetupDetail, meetupAt },
+  });
+
+  res.redirect(`/orders/${id}`);
+});
+
+app.post("/orders/:id/confirm", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const userId = res.locals.currentUser.id;
+  const order = await loadOrderForUser(id, userId);
+  if (!order) {
+    return res.status(404).send("Not Found");
+  }
+  if (order.status !== "PENDING") {
+    return res
+      .status(400)
+      .render("order_detail", { order, error: "この取引は既に確定または取消されています", campuses: CAMPUSES, campusLabels: CAMPUS_LABELS });
+  }
+
+  const isBuyer = order.buyerId === userId;
+
+  await prisma.$transaction(async (tx) => {
+    const updated = await tx.order.update({
+      where: { id },
+      data: isBuyer ? { buyerConfirmedAt: new Date() } : { sellerConfirmedAt: new Date() },
+    });
+
+    if (updated.buyerConfirmedAt && updated.sellerConfirmedAt) {
+      await tx.order.update({ where: { id }, data: { status: "COMPLETED" } });
+      await tx.listing.update({ where: { id: updated.listingId }, data: { status: "SOLD" } });
+    }
+  });
+
+  res.redirect(`/orders/${id}`);
+});
+
+app.post("/orders/:id/cancel", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const order = await loadOrderForUser(id, res.locals.currentUser.id);
+  if (!order) {
+    return res.status(404).send("Not Found");
+  }
+  if (order.status !== "PENDING") {
+    return res
+      .status(400)
+      .render("order_detail", { order, error: "この取引は既に確定または取消されています", campuses: CAMPUSES, campusLabels: CAMPUS_LABELS });
+  }
+
+  // 1 Listing : 生涯1 Order の制約と再利用は両立しないため、Listingは復帰させずCANCELLEDのまま終端する。
+  await prisma.$transaction(async (tx) => {
+    await tx.order.update({ where: { id }, data: { status: "CANCELLED" } });
+    await tx.listing.update({ where: { id: order.listingId }, data: { status: "CANCELLED" } });
+  });
+
+  res.redirect(`/orders/${id}`);
 });
 
 app.listen(PORT, () => {

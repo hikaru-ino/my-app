@@ -5,6 +5,7 @@
   <a href="/courses">授業一覧</a> |
   <% if (currentUser) { %>
     <a href="/conversations">会話一覧</a> |
+    <a href="/orders">取引一覧</a> |
     <%= currentUser.name %>さん
     <form action="/logout" method="post" style="display:inline">
       <button type="submit">ログアウト</button>

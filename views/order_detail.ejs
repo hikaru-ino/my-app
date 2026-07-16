@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title><%= order.listing.book.title %>の取引</title>
+</head>
+<body>
+ <%- include('partials/nav') %>
+
+ <h1><%= order.listing.book.title %>の取引</h1>
+ <p><a href="/listings/<%= order.listing.id %>">出品詳細を見る</a></p>
+
+ <% const isBuyer = currentUser.id === order.buyerId; %>
+ <% const counterpart = isBuyer ? order.listing.seller.name : order.buyer.name; %>
+
+ <p>相手: <%= counterpart %>さん</p>
+ <p>確定価格: <%= order.price %>円</p>
+ <p>ステータス: <%= order.status %></p>
+
+ <% if (error) { %>
+   <p style="color:red"><%= error %></p>
+ <% } %>
+
+ <h2>待ち合わせ</h2>
+ <% if (order.campus) { %>
+   <p>
+     場所: <%= campusLabels[order.campus] %>
+     <% if (order.meetupDetail) { %>(<%= order.meetupDetail %>)<% } %>
+     <br>
+     <% if (order.meetupAt) { %>日時: <%= order.meetupAt.toLocaleString('ja-JP') %><% } else { %>日時: 未設定<% } %>
+   </p>
+ <% } else { %>
+   <p>まだ待ち合わせ場所が設定されていません。</p>
+ <% } %>
+
+ <% if (order.status === 'PENDING') { %>
+   <form action="/orders/<%= order.id %>/meetup" method="post">
+     <select name="campus" required>
+       <option value="">キャンパスを選択</option>
+       <% campuses.forEach(c => { %>
+         <option value="<%= c %>" <%= order.campus === c ? 'selected' : '' %>><%= campusLabels[c] %></option>
+       <% }) %>
+     </select>
+     <input type="text" name="meetupDetail" placeholder="集合場所の詳細(任意)" value="<%= order.meetupDetail ?? '' %>">
+     <input type="datetime-local" name="meetupAt">
+     <button type="submit">待ち合わせ情報を更新</button>
+   </form>
+
+   <h2>取引の完了</h2>
+   <p>
+     購入者の確認: <%= order.buyerConfirmedAt ? '済み(' + order.buyerConfirmedAt.toLocaleString('ja-JP') + ')' : '未確認' %><br>
+     出品者の確認: <%= order.sellerConfirmedAt ? '済み(' + order.sellerConfirmedAt.toLocaleString('ja-JP') + ')' : '未確認' %>
+   </p>
+   <p>両者が確認すると取引が完了し、出品のステータスがSOLDになります。</p>
+
+   <% if ((isBuyer && !order.buyerConfirmedAt) || (!isBuyer && !order.sellerConfirmedAt)) { %>
+     <form action="/orders/<%= order.id %>/confirm" method="post" style="display:inline">
+       <button type="submit">受け渡しを完了として確認する</button>
+     </form>
+   <% } %>
+
+   <form action="/orders/<%= order.id %>/cancel" method="post" style="display:inline">
+     <button type="submit">この取引を取消す</button>
+   </form>
+ <% } %>
+
+ <p><a href="/orders">取引一覧に戻る</a></p>
+
+</body>
+</html>

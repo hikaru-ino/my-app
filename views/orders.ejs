@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>取引一覧</title>
+</head>
+<body>
+ <%- include('partials/nav') %>
+
+ <h1>取引一覧</h1>
+
+ <% if (orders.length === 0) { %>
+   <p>まだ取引がありません。</p>
+ <% } else { %>
+   <ul>
+     <% orders.forEach(order => { %>
+       <li>
+         <a href="/orders/<%= order.id %>">
+           [<%= order.isSeller ? '出品者として' : '購入者として' %>]
+           <%= order.listing.book.title %> —
+           <%= order.isSeller ? order.buyer.name : order.listing.seller.name %>さん
+           (<%= order.price %>円 / <%= order.status %>)
+         </a>
+         <% if (order.campus) { %>
+           <br><%= campusLabels[order.campus] %><% if (order.meetupAt) { %> <%= order.meetupAt.toLocaleString('ja-JP') %><% } %>
+         <% } %>
+       </li>
+     <% }) %>
+   </ul>
+ <% } %>
+
+</body>
+</html>

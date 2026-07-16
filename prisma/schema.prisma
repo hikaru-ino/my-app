@@ -26,6 +26,7 @@ model User {
   bids          Bid[]
   conversations Conversation[]
   messages      Message[]
+  orders        Order[]
 }
 
 model Book {
@@ -99,6 +100,7 @@ model Listing {
   winner        User?          @relation("ListingWinner", fields: [winnerId], references: [id])
   bids          Bid[]
   conversations Conversation[]
+  order         Order?
 
   @@index([status, createdAt(sort: Desc)])
   @@index([bookId])
@@ -140,4 +142,40 @@ model Message {
   sender       User         @relation(fields: [senderId], references: [id])
 
   @@index([conversationId, createdAt])
+}
+
+enum Campus {
+  MITA
+  HIYOSHI
+  YAGAMI
+  SFC
+  SHINANOMACHI
+}
+
+enum OrderStatus {
+  PENDING // 待ち合わせ調整中
+  COMPLETED // 取引完了
+  CANCELLED // 取消。Listingは復帰させず、再出品は新規Listingで行う
+}
+
+model Order {
+  id        Int         @id @default(autoincrement())
+  listingId Int         @unique
+  buyerId   Int
+  price     Int // 確定価格のスナップショット(FIXEDはlisting.price、AUCTIONは落札額)
+  status    OrderStatus @default(PENDING)
+
+  campus       Campus?
+  meetupDetail String?
+  meetupAt     DateTime?
+
+  buyerConfirmedAt  DateTime?
+  sellerConfirmedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  listing Listing @relation(fields: [listingId], references: [id])
+  buyer   User    @relation(fields: [buyerId], references: [id])
+
+  @@index([buyerId])
 }

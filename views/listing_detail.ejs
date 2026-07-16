@@ -16,6 +16,10 @@
  <p>状態: <%= listing.condition %></p>
  <p>ステータス: <%= listing.status %></p>
 
+ <% if (error) { %>
+   <p style="color:red"><%= error %></p>
+ <% } %>
+
  <% if (listing.listingType === 'FIXED') { %>
    <p>価格: <%= listing.price %>円</p>
  <% } else { %>
@@ -43,6 +47,14 @@
    <p>出品者に質問するには<a href="/login">ログイン</a>してください。</p>
  <% } %>
 
+ <% if (listing.order && currentUser && (currentUser.id === listing.order.buyerId || currentUser.id === listing.sellerId)) { %>
+   <p><a href="/orders/<%= listing.order.id %>">この出品の取引ページを見る</a></p>
+ <% } else if (listing.listingType === 'FIXED' && listing.status === 'ACTIVE' && currentUser && currentUser.id !== listing.sellerId) { %>
+   <form action="/listings/<%= listing.id %>/orders" method="post" style="display:inline">
+     <button type="submit">購入する</button>
+   </form>
+ <% } %>
+
  <% if (listing.listingType === 'AUCTION') { %>
    <h2>入札履歴</h2>
    <% if (listing.bids.length === 0) { %>
@@ -53,10 +65,6 @@
          <li><%= bid.bidder.name %>: <%= bid.amount %>円(<%= bid.createdAt.toLocaleString('ja-JP') %>)</li>
        <% }) %>
      </ul>
-   <% } %>
-
-   <% if (error) { %>
-     <p style="color:red"><%= error %></p>
    <% } %>
 
    <% if (currentUser && listing.status === 'ACTIVE' && currentUser.id !== listing.sellerId) { %>
