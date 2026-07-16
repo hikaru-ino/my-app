@@ -219,7 +219,56 @@ app.post("/courses", requireLogin, async (req, res) => {
   res.redirect("/courses");
 });
 
+class BidError extends Error {}
+
+// ACTIVEかつauctionEndAtを過ぎたAUCTIONを確定する。何度呼んでも安全(冪等)。
+// Bid受付時・詳細表示時・一覧表示時のいずれからも呼ばれる遅延評価(lazy finalize)方式。
+async function finalizeIfExpired(client: Prisma.TransactionClient, listingId: number) {
+  const listing = await client.listing.findUnique({ where: { id: listingId } });
+  if (!listing || listing.listingType !== "AUCTION" || listing.status !== "ACTIVE") {
+    return;
+  }
+  if (!listing.auctionEndAt || listing.auctionEndAt > new Date()) {
+    return;
+  }
+
+  const topBid = await client.bid.findFirst({
+    where: { listingId },
+    orderBy: { amount: "desc" },
+  });
+
+  await client.listing.updateMany({
+    where: { id: listingId, status: "ACTIVE" },
+    data: topBid ? { status: "SOLD", winnerId: topBid.bidderId } : { status: "CANCELLED" },
+  });
+}
+
+async function finalizeExpiredAuctions() {
+  const expired = await prisma.listing.findMany({
+    where: { listingType: "AUCTION", status: "ACTIVE", auctionEndAt: { lt: new Date() } },
+    select: { id: true },
+  });
+  for (const { id } of expired) {
+    await prisma.$transaction((tx) => finalizeIfExpired(tx, id));
+  }
+}
+
+async function loadListingDetail(id: number) {
+  await prisma.$transaction((tx) => finalizeIfExpired(tx, id));
+  return prisma.listing.findUnique({
+    where: { id },
+    include: {
+      book: true,
+      seller: true,
+      winner: true,
+      bids: { include: { bidder: true }, orderBy: { amount: "desc" } },
+    },
+  });
+}
+
 app.get("/listings", async (req, res) => {
+  await finalizeExpiredAuctions();
+
   const q = typeof req.query.q === "string" ? req.query.q : "";
   const courseId = req.query.courseId ? Number(req.query.courseId) : null;
   const condition = typeof req.query.condition === "string" ? req.query.condition : "";
@@ -352,14 +401,66 @@ app.post("/listings", requireLogin, async (req, res) => {
 
 app.get("/listings/:id", async (req, res) => {
   const id = Number(req.params.id);
-  const listing = await prisma.listing.findUnique({
-    where: { id },
-    include: { book: true, seller: true },
-  });
+  const listing = await loadListingDetail(id);
   if (!listing) {
     return res.status(404).send("Not Found");
   }
-  res.render("listing_detail", { listing });
+  res.render("listing_detail", { listing, error: null });
+});
+
+app.post("/listings/:id/bids", requireLogin, async (req, res) => {
+  const id = Number(req.params.id);
+  const amount = req.body.amount ? Number(req.body.amount) : null;
+  const bidderId = res.locals.currentUser.id;
+
+  const renderError = async (error: string) => {
+    const listing = await loadListingDetail(id);
+    if (!listing) {
+      return res.status(404).send("Not Found");
+    }
+    return res.status(400).render("listing_detail", { listing, error });
+  };
+
+  if (!amount || amount <= 0) {
+    return renderError("入札額を入力してください");
+  }
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await finalizeIfExpired(tx, id);
+
+      const listing = await tx.listing.findUnique({ where: { id } });
+      if (!listing) {
+        throw new BidError("出品が見つかりません");
+      }
+      if (listing.listingType !== "AUCTION") {
+        throw new BidError("この出品には入札できません");
+      }
+      if (listing.sellerId === bidderId) {
+        throw new BidError("自分の出品には入札できません");
+      }
+      if (listing.status !== "ACTIVE" || (listing.auctionEndAt && listing.auctionEndAt < new Date())) {
+        throw new BidError("この出品は既に終了しています");
+      }
+
+      const updated = await tx.listing.updateMany({
+        where: { id, status: "ACTIVE", currentPrice: { lt: amount } },
+        data: { currentPrice: amount },
+      });
+      if (updated.count === 0) {
+        throw new BidError("現在価格より高い金額を入力してください");
+      }
+
+      await tx.bid.create({ data: { listingId: id, bidderId, amount } });
+    });
+  } catch (err) {
+    if (err instanceof BidError) {
+      return renderError(err.message);
+    }
+    throw err;
+  }
+
+  res.redirect(`/listings/${id}`);
 });
 
 app.listen(PORT, () => {

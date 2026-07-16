@@ -21,6 +21,12 @@
  <% } else { %>
    <p>現在価格: <%= listing.currentPrice %>円(開始価格 <%= listing.startingPrice %>円)</p>
    <p>終了日時: <%= listing.auctionEndAt.toLocaleString('ja-JP') %></p>
+
+   <% if (listing.status === 'SOLD' && listing.winner) { %>
+     <p>落札者: <%= listing.winner.name %></p>
+   <% } else if (listing.status === 'CANCELLED') { %>
+     <p>入札がなかったため不成立となりました。</p>
+   <% } %>
  <% } %>
 
  <% if (listing.description) { %>
@@ -28,6 +34,32 @@
  <% } %>
 
  <p>出品者: <%= listing.seller.name %></p>
+
+ <% if (listing.listingType === 'AUCTION') { %>
+   <h2>入札履歴</h2>
+   <% if (listing.bids.length === 0) { %>
+     <p>まだ入札がありません。</p>
+   <% } else { %>
+     <ul>
+       <% listing.bids.forEach(bid => { %>
+         <li><%= bid.bidder.name %>: <%= bid.amount %>円(<%= bid.createdAt.toLocaleString('ja-JP') %>)</li>
+       <% }) %>
+     </ul>
+   <% } %>
+
+   <% if (error) { %>
+     <p style="color:red"><%= error %></p>
+   <% } %>
+
+   <% if (currentUser && listing.status === 'ACTIVE' && currentUser.id !== listing.sellerId) { %>
+     <form action="/listings/<%= listing.id %>/bids" method="post">
+       <input type="number" name="amount" min="<%= listing.currentPrice + 1 %>" placeholder="入札額(<%= listing.currentPrice %>円より高い金額)" required>
+       <button type="submit">入札する</button>
+     </form>
+   <% } else if (!currentUser) { %>
+     <p>入札するには<a href="/login">ログイン</a>してください。</p>
+   <% } %>
+ <% } %>
 
  <p><a href="/listings">出品一覧に戻る</a></p>
 

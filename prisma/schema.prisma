@@ -21,8 +21,9 @@ model User {
   verificationToken String?
   createdAt         DateTime @default(now())
 
-  listings Listing[]
-  bids     Bid[]
+  listings    Listing[] @relation("ListingSeller")
+  wonListings Listing[] @relation("ListingWinner")
+  bids        Bid[]
 }
 
 model Book {
@@ -87,11 +88,13 @@ model Listing {
   startingPrice Int? // AUCTIONのみ
   currentPrice  Int? // AUCTIONのみ。Bid作成時に更新
   auctionEndAt  DateTime? // AUCTIONのみ
+  winnerId      Int? // AUCTIONのみ。終了確定時に最高額入札者を記録
 
   createdAt DateTime @default(now())
 
-  book   Book @relation(fields: [bookId], references: [id])
-  seller User @relation(fields: [sellerId], references: [id])
+  book   Book  @relation(fields: [bookId], references: [id])
+  seller User  @relation("ListingSeller", fields: [sellerId], references: [id])
+  winner User? @relation("ListingWinner", fields: [winnerId], references: [id])
   bids   Bid[]
 
   @@index([status, createdAt(sort: Desc)])
